@@ -17,6 +17,7 @@ import io
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFont
+import urllib.parse
 
 
 MAGIC = b"PROD\x02"
@@ -83,6 +84,9 @@ def main():
         size = 256
 
     input_path = sys.argv[2]
+    # Handle file:// URIs (Freedesktop spec passes %i as URI)
+    if input_path.startswith("file://"):
+        input_path = urllib.parse.unquote(input_path[7:])
     output_path = sys.argv[3]
 
     if not os.path.isfile(input_path):
