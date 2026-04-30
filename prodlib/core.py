@@ -43,6 +43,7 @@ class Header:
     uuid: str = ""
     code: str = ""
     description: str = ""
+    unit: str = ""
     variation_groups: list = field(default_factory=list)
 
 

@@ -135,6 +135,7 @@ def open_product(path: str) -> dict:
         "title": p.header.title,
         "uuid": p.header.uuid,
         "code": p.header.code,
+        "unit": p.header.unit,
         "description": p.header.description,
         "variation_groups": _groups_to_dicts(p.header.variation_groups),
         "photoCount": len(p.photos),
@@ -157,6 +158,8 @@ def save_product(path: str, data: dict) -> dict:
         p.header.title = data["title"]
     if "code" in data:
         p.header.code = data["code"]
+    if "unit" in data:
+        p.header.unit = data["unit"]
     if "description" in data:
         p.header.description = data["description"]
     if "variation_groups" in data:
@@ -240,6 +243,39 @@ def get_price_history(path: str) -> list[dict]:
     return result
 
 
+def edit_price(path: str, index: int, price: float = None, currency: str = None) -> None:
+    p = Product.open(path)
+    if index < 0 or index >= len(p.price_history):
+        raise IndexError(f"price index {index} out of range")
+    rec = p.price_history[index]
+    if price is not None:
+        rec.price_hundredths = int(price * 100 + 0.5)
+    if currency is not None:
+        if len(currency) != 3:
+            raise ValueError("currency must be 3 characters")
+        rec.currency = currency
+    p.save(path)
+
+
+def delete_price(path: str, index: int) -> None:
+    p = Product.open(path)
+    if index < 0 or index >= len(p.price_history):
+        raise IndexError(f"price index {index} out of range")
+    p.price_history.pop(index)
+    p.save(path)
+
+
+def move_photo(path: str, index: int, direction: int) -> None:
+    p = Product.open(path)
+    if index < 0 or index >= len(p.photos):
+        raise IndexError(f"photo index {index} out of range")
+    new_idx = index + direction
+    if new_idx < 0 or new_idx >= len(p.photos):
+        return  # can't move beyond bounds
+    p.photos[index], p.photos[new_idx] = p.photos[new_idx], p.photos[index]
+    p.save(path)
+
+
 def get_settings() -> dict:
     """Load settings from JSON file."""
     store_dir = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -249,7 +285,7 @@ def get_settings() -> dict:
         import json
         with open(cfg_path) as f:
             return json.load(f)
-    return {"company": "", "currency": "USD", "defaultDir": ""}
+    return {"currency": "CNY", "language": "en"}
 
 
 def save_settings(settings: dict) -> None:

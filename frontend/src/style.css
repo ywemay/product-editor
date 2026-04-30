@@ -1,5 +1,6 @@
 /* Products Editor — Clean, modern theme */
 
+/* Default (dark) theme */
 :root {
     --bg-primary: #1e1e2e;
     --bg-secondary: #181825;
@@ -119,6 +120,21 @@ select option { background: #2a2a3e; color: #cdd6f4; }
 }
 .photo-item:hover .remove-btn { display: flex; align-items: center; justify-content: center; }
 .photo-item .remove-btn:hover { background: rgba(0,0,0,0.85); }
+
+/* Photo move buttons */
+.photo-move-left, .photo-move-right {
+    position: absolute; bottom: 4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.6); color: var(--accent);
+    cursor: pointer; font-size: 10px; display: none;
+    align-items: center; justify-content: center;
+    z-index: 2;
+}
+.photo-move-left { left: 4px; }
+.photo-move-right { right: 4px; }
+.photo-item:hover .photo-move-left,
+.photo-item:hover .photo-move-right { display: flex; }
+.photo-move-left:hover, .photo-move-right:hover { background: rgba(0,0,0,0.85); }
 
 /* ========== PHOTO UPLOAD ========== */
 .photo-upload { 
@@ -357,4 +373,29 @@ select option { background: #2a2a3e; color: #cdd6f4; }
     accent-color: var(--accent);
     cursor: pointer;
     vertical-align: middle;
+}
+
+/* ========== LIGHT THEME ========== */
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-primary: #f5f5f9;
+        --bg-secondary: #ffffff;
+        --bg-surface: #f0f0f6;
+        --bg-hover: #e8e8ee;
+        --text-primary: #1e1e2e;
+        --text-secondary: #585870;
+        --text-muted: #8c8ca0;
+        --accent: #5b87d6;
+        --accent-hover: #4a78b5;
+        --accent-green: #40a040;
+        --accent-red: #d64040;
+        --accent-yellow: #c8a000;
+        --accent-orange: #d08030;
+        --border: #d0d0da;
+        --border-light: #c0c0cc;
+        --shadow: rgba(0, 0, 0, 0.1);
+        --bg-input: #ffffff;
+        --bg-input-focus: #f8f8fe;
+    }
+    select option { background: #ffffff; color: #1e1e2e; }
 }

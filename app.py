@@ -147,6 +147,17 @@ if bottle is not None:
         return json_ok({"status": "ok", "version": "1.0.0"})
 
 
+    # Try to use new FileDialog API to avoid deprecation warnings
+    try:
+        from webview import FileDialog
+        open_dialog = FileDialog.OPEN
+        save_dialog = FileDialog.SAVE
+    except ImportError:
+        import webview
+        open_dialog = webview.OPEN_DIALOG
+        save_dialog = webview.SAVE_DIALOG
+
+
     @bottle_app.get("/api/open-file")
     def api_open_file():
         """Return a file path selected via native file dialog."""
@@ -154,7 +165,7 @@ if bottle is not None:
             import webview
             file_types = ("Product files (*.prod)",)
             result = webview.windows[0].create_file_dialog(
-                webview.OPEN_DIALOG, allow_multiple=False,
+                open_dialog, allow_multiple=False,
                 file_types=file_types
             )
             path = result[0] if result else ""
@@ -169,10 +180,71 @@ if bottle is not None:
         try:
             file_types = ("Product files (*.prod)",)
             result = webview.windows[0].create_file_dialog(
-                webview.SAVE_DIALOG, allow_multiple=False,
+                save_dialog, allow_multiple=False,
                 file_types=file_types, save_filename="product.prod"
             )
             return json_ok({"path": result if result else ""})
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.get("/api/settings")
+    def api_get_settings():
+        try:
+            return json_ok(store.get_settings())
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/settings")
+    def api_save_settings():
+        body = request.json or {}
+        try:
+            store.save_settings(body)
+            return json_ok({"saved": True})
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/price/edit")
+    def api_price_edit():
+        body = request.json or {}
+        path = body.get("path", "")
+        index = body.get("index", -1)
+        if not path or index < 0:
+            return json_err("path and index are required")
+        try:
+            store.edit_price(path, index, body.get("price", None), body.get("currency", None))
+            return json_ok(store.get_price_history(path))
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/price/delete")
+    def api_price_delete():
+        body = request.json or {}
+        path = body.get("path", "")
+        index = body.get("index", -1)
+        if not path or index < 0:
+            return json_err("path and index are required")
+        try:
+            store.delete_price(path, index)
+            return json_ok(store.get_price_history(path))
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/photo/move")
+    def api_photo_move():
+        body = request.json or {}
+        path = body.get("path", "")
+        index = body.get("index", -1)
+        direction = body.get("direction", 0)  # -1 for left, 1 for right
+        if not path or index < 0 or direction == 0:
+            return json_err("path, index, and direction are required")
+        try:
+            store.move_photo(path, index, direction)
+            return json_ok(store.open_product(path))
         except Exception as e:
             return json_err(str(e))
 

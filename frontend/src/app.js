@@ -20,4 +20,9 @@ const api = {
     removePhoto:        (p, index) => apiCall('POST', '/api/photo/remove', { path: p, index }),
     openFileDialog:     () => apiCall('GET', '/api/open-file'),
     saveFileAs:         () => apiCall('GET', '/api/save-file-as'),
+    getSettings:        () => apiCall('GET', '/api/settings'),
+    saveSettings:       (s) => apiCall('POST', '/api/settings', s),
+    editPrice:          (p, index, price, currency) => apiCall('POST', '/api/price/edit', { path: p, index, price, currency }),
+    deletePrice:        (p, index) => apiCall('POST', '/api/price/delete', { path: p, index }),
+    movePhoto:          (p, index, direction) => apiCall('POST', '/api/photo/move', { path: p, index, direction }),
 };

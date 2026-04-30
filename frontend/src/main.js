@@ -13,6 +13,9 @@ var state = {
     error: '',
     success: '',
     modified: false,
+    settings: { currency: 'CNY', language: 'en' },
+    lang: null,
+    langCode: 'en',
 };
 
 function setState(updates) {
@@ -27,11 +30,270 @@ function escapeHtml(s) {
 }
 
 // ========================================================================
+// LOCALIZATION
+// ========================================================================
+
+var l10n = {
+    en: {
+        noFile: 'No file open',
+        open: 'Open',
+        openFile: 'Open a .prod file to start editing',
+        dragDrop: 'Drag & drop a .prod file or click Open',
+        save: 'Save',
+        saveAs: 'Save As...',
+        close: 'Close',
+        addPrice: 'Add Price',
+        product: 'Product',
+        variations: 'Variations',
+        productInfo: 'Product Info',
+        title: 'Title',
+        code: 'Code',
+        unit: 'Unit',
+        photos: 'Photos',
+        addPhoto: 'Add Photo',
+        description: 'Description',
+        edit: 'Edit',
+        cancel: 'Cancel',
+        priceHistory: 'Price History',
+        noPrices: 'No prices recorded yet.',
+        variationGroups: 'Variation Groups',
+        addGroup: 'Add Group',
+        addValue: 'Value',
+        affectsPrice: 'Affects price',
+        generatedSKUs: 'Generated SKUs',
+        skuCombinations: 'SKU combination(s)',
+        noSKU: 'No SKU combinations to display. Add values to variation groups above.',
+        noVariationGroups: 'No variation groups defined. Add groups like Color, Size, or Material.',
+        date: 'Date',
+        variation: 'Variation',
+        price: 'Price',
+        currency: 'Currency',
+        actions: 'Actions',
+        all: 'All',
+        base: 'Base',
+        modified: 'Modified',
+        saved: 'Saved',
+        settings: 'Settings',
+        defaultCurrency: 'Default Currency',
+        language: 'Language',
+        saveSettings: 'Save',
+        confirmClose: 'You have unsaved changes. Close anyway?',
+        confirmOpen: 'You have unsaved changes. Open another file anyway?',
+        removePhoto: 'Remove photo',
+        unsavedChanges: 'You have unsaved changes.',
+        noDescription: 'No description.',
+        photosCount: 'photo(s)',
+        editPrice: 'Edit price',
+        deletePrice: 'Delete this price entry?',
+        editPricePrompt: 'Edit price:',
+        editCurrencyPrompt: 'Edit currency (3 letters):',
+        invalidCurrency: 'Currency must be 3 letters',
+        invalidPrice: 'Invalid price',
+        movePhotoLeft: 'Move left',
+        movePhotoRight: 'Move right',
+        deleteGroup: 'Delete group',
+    },
+    zh: {
+        noFile: '未打开文件',
+        open: '打开',
+        openFile: '打开 .prod 文件开始编辑',
+        dragDrop: '拖放 .prod 文件或点击打开',
+        save: '保存',
+        saveAs: '另存为...',
+        close: '关闭',
+        addPrice: '添加价格',
+        product: '产品',
+        variations: '规格',
+        productInfo: '产品信息',
+        title: '标题',
+        code: '编码',
+        unit: '单位',
+        photos: '照片',
+        addPhoto: '添加照片',
+        description: '描述',
+        edit: '编辑',
+        cancel: '取消',
+        priceHistory: '价格历史',
+        noPrices: '暂无价格记录。',
+        variationGroups: '规格组',
+        addGroup: '添加组',
+        addValue: '值',
+        affectsPrice: '影响价格',
+        generatedSKUs: '生成的SKU',
+        skuCombinations: '个SKU组合',
+        noSKU: '暂无SKU组合。请在规格组中添加值。',
+        noVariationGroups: '暂无规格组。请添加如颜色、尺寸或材质的组。',
+        date: '日期',
+        variation: '规格',
+        price: '价格',
+        currency: '货币',
+        actions: '操作',
+        all: '全部',
+        base: '基础',
+        modified: '已修改',
+        saved: '已保存',
+        settings: '设置',
+        defaultCurrency: '默认货币',
+        language: '语言',
+        saveSettings: '保存',
+        confirmClose: '有未保存的更改，确定关闭吗？',
+        confirmOpen: '有未保存的更改，确定打开其他文件吗？',
+        removePhoto: '删除照片',
+        unsavedChanges: '有未保存的更改。',
+        noDescription: '暂无描述。',
+        photosCount: '张照片',
+        editPrice: '编辑价格',
+        deletePrice: '删除此价格记录？',
+        editPricePrompt: '编辑价格：',
+        editCurrencyPrompt: '编辑货币（3个字母）：',
+        invalidCurrency: '货币必须是3个字母',
+        invalidPrice: '无效价格',
+        movePhotoLeft: '左移',
+        movePhotoRight: '右移',
+        deleteGroup: '删除组',
+    },
+    ru: {
+        noFile: 'Файл не открыт',
+        open: 'Открыть',
+        openFile: 'Откройте .prod файл для редактирования',
+        dragDrop: 'Перетащите .prod файл или нажмите Открыть',
+        save: 'Сохранить',
+        saveAs: 'Сохранить как...',
+        close: 'Закрыть',
+        addPrice: 'Добавить цену',
+        product: 'Товар',
+        variations: 'Вариации',
+        productInfo: 'Информация о товаре',
+        title: 'Название',
+        code: 'Код',
+        unit: 'Ед. изм.',
+        photos: 'Фото',
+        addPhoto: 'Добавить фото',
+        description: 'Описание',
+        edit: 'Редактировать',
+        cancel: 'Отмена',
+        priceHistory: 'История цен',
+        noPrices: 'Цены еще не записаны.',
+        variationGroups: 'Группы вариаций',
+        addGroup: 'Добавить группу',
+        addValue: 'Значение',
+        affectsPrice: 'Влияет на цену',
+        generatedSKUs: 'Сгенерированные SKU',
+        skuCombinations: 'SKU комбинаций',
+        noSKU: 'Нет SKU комбинаций. Добавьте значения в группы вариаций.',
+        noVariationGroups: 'Группы вариаций не определены. Добавьте группы, например Цвет, Размер или Материал.',
+        date: 'Дата',
+        variation: 'Вариация',
+        price: 'Цена',
+        currency: 'Валюта',
+        actions: 'Действия',
+        all: 'Все',
+        base: 'Базовая',
+        modified: 'Изменено',
+        saved: 'Сохранено',
+        settings: 'Настройки',
+        defaultCurrency: 'Валюта по умолчанию',
+        language: 'Язык',
+        saveSettings: 'Сохранить',
+        confirmClose: 'Есть несохраненные изменения. Закрыть?',
+        confirmOpen: 'Есть несохраненные изменения. Открыть другой файл?',
+        removePhoto: 'Удалить фото',
+        unsavedChanges: 'Есть несохраненные изменения.',
+        noDescription: 'Нет описания.',
+        photosCount: 'фото',
+        editPrice: 'Редактировать цену',
+        deletePrice: 'Удалить эту запись цены?',
+        editPricePrompt: 'Редактировать цену:',
+        editCurrencyPrompt: 'Редактировать валюту (3 буквы):',
+        invalidCurrency: 'Валюта должна содержать 3 буквы',
+        invalidPrice: 'Неверная цена',
+        movePhotoLeft: 'Сдвинуть влево',
+        movePhotoRight: 'Сдвинуть вправо',
+        deleteGroup: 'Удалить группу',
+    },
+};
+
+function applyLanguage(code) {
+    var lang = l10n[code] || l10n.en;
+    state.lang = lang;
+    state.langCode = code;
+    // Re-render to apply new strings
+    if (state.filepath && state.product) {
+        render();
+    } else {
+        // Update static elements
+        document.getElementById('editor-filename').textContent = lang.noFile;
+        document.getElementById('btn-open-file').textContent = '📂 ' + lang.open;
+        var container = document.getElementById('tab-content');
+        if (container && !state.filepath) {
+            container.innerHTML = '<div class="editor-empty-state">' +
+                '<div>📦</div>' +
+                '<p>' + escapeHtml(lang.openFile) + '</p>' +
+                '<p class="small">' + escapeHtml(lang.dragDrop) + '</p>' +
+                '</div>';
+        }
+    }
+}
+
+// ========================================================================
+// SETTINGS
+// ========================================================================
+
+async function loadSettingsAndApply() {
+    try {
+        var s = await api.getSettings();
+        state.settings = s || { currency: 'CNY', language: 'en' };
+        // Apply language
+        applyLanguage(state.settings.language);
+        // Set default currency in top bar
+        var currInput = document.getElementById('tb-currency-input');
+        if (currInput) currInput.value = s.currency || 'CNY';
+    } catch (err) {
+        state.settings = { currency: 'CNY', language: 'en' };
+    }
+}
+
+async function openSettings() {
+    try {
+        var s = await api.getSettings();
+        document.getElementById('settings-currency').value = s.currency || 'CNY';
+        document.getElementById('settings-language').value = s.language || 'en';
+        document.getElementById('settings-modal').style.display = 'flex';
+    } catch (err) {
+        setState({ error: 'Failed to load settings: ' + err.message });
+    }
+}
+
+function closeSettings() {
+    document.getElementById('settings-modal').style.display = 'none';
+}
+
+async function handleSettingsSave() {
+    var settings = {
+        currency: document.getElementById('settings-currency').value,
+        language: document.getElementById('settings-language').value,
+    };
+    try {
+        await api.saveSettings(settings);
+        closeSettings();
+        // Apply language immediately
+        applyLanguage(settings.language);
+        // Update top bar currency field
+        var currInput = document.getElementById('tb-currency-input');
+        if (currInput) currInput.value = settings.currency;
+        setState({ success: (state.lang || l10n.en).saved });
+    } catch (err) {
+        setState({ error: 'Failed to save settings: ' + err.message });
+    }
+}
+
+// ========================================================================
 // INIT
 // ========================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     bindEvents();
+    loadSettingsAndApply();
     render();
     // Check if launched with a .prod file from argv (file association)
     checkLaunchFile();
@@ -53,6 +315,11 @@ function bindEvents() {
     document.getElementById('btn-open-file').addEventListener('click', function() {
         openFilePicker();
     });
+
+    // Settings
+    document.getElementById('btn-settings').addEventListener('click', openSettings);
+    document.getElementById('settings-cancel-btn').addEventListener('click', closeSettings);
+    document.getElementById('settings-save-btn').addEventListener('click', handleSettingsSave);
 
     // Top bar actions
     document.getElementById('btn-close-file').addEventListener('click', handleCloseFile);
@@ -80,7 +347,7 @@ function bindEvents() {
             if (path.endsWith('.prod')) {
                 // If modified, confirm close first
                 if (state.modified && state.filepath) {
-                    if (!confirm('You have unsaved changes. Open another file anyway?')) return;
+                    if (!confirm((state.lang || l10n.en).confirmOpen)) return;
                 }
                 openProductFile(path);
             }
@@ -98,7 +365,7 @@ async function openFilePicker() {
         if (result && result.path) {
             // If modified, confirm close first
             if (state.modified && state.filepath) {
-                if (!confirm('You have unsaved changes. Open another file anyway?')) return;
+                if (!confirm((state.lang || l10n.en).confirmOpen)) return;
             }
             openProductFile(result.path);
         }
@@ -123,6 +390,11 @@ async function openProductFile(filepath) {
         combos.forEach(function(c) {
             ce[c.label] = true;
         });
+
+        // Set default currency in top bar from settings
+        var currInput = document.getElementById('tb-currency-input');
+        if (currInput) currInput.value = (state.settings && state.settings.currency) || 'CNY';
+
         setState({
             filepath: filepath,
             product: product,
@@ -139,7 +411,7 @@ async function openProductFile(filepath) {
 
 function handleCloseFile() {
     if (state.modified) {
-        if (!confirm('You have unsaved changes. Close anyway?')) return;
+        if (!confirm((state.lang || l10n.en).confirmClose)) return;
     }
     setState({
         filepath: null,
@@ -157,10 +429,11 @@ async function handleSave() {
         var result = await api.saveProduct(state.filepath, {
             title: product.title,
             code: product.code,
+            unit: product.unit,
             description: product.description,
             variation_groups: product.variation_groups,
         });
-        setState({ product: result, modified: false, success: '✅ Saved' });
+        setState({ product: result, modified: false, success: '✅ ' + (state.lang || l10n.en).saved });
     } catch (err) {
         setState({ error: 'Save failed: ' + err.message });
     }
@@ -217,11 +490,12 @@ function render() {
         renderActiveTab();
     } else {
         document.getElementById('tabs').style.display = 'none';
+        var lang = state.lang || l10n.en;
         var container = document.getElementById('tab-content');
         container.innerHTML = '<div class="editor-empty-state">' +
             '<div>📦</div>' +
-            '<p>Open a .prod file to start editing</p>' +
-            '<p class="small">Drag &amp; drop a .prod file or click Open</p>' +
+            '<p>' + escapeHtml(lang.openFile) + '</p>' +
+            '<p class="small">' + escapeHtml(lang.dragDrop) + '</p>' +
             '</div>';
     }
 }
@@ -229,6 +503,7 @@ function render() {
 function renderTopBar() {
     var p = state.product;
     var hasFile = !!(state.filepath && p);
+    var lang = state.lang || l10n.en;
 
     var filenameEl = document.getElementById('editor-filename');
     var modifiedEl = document.getElementById('editor-modified');
@@ -256,7 +531,7 @@ function renderTopBar() {
         // Update variation dropdown in top bar price form
         updateTopbarPriceVariationDropdown();
     } else {
-        filenameEl.textContent = 'No file open';
+        filenameEl.textContent = lang.noFile;
         modifiedEl.style.display = 'none';
         iconEl.textContent = '📦';
 
@@ -291,12 +566,14 @@ function updateTopbarPriceVariationDropdown() {
     var p = state.product;
     if (!p) return;
 
+    var lang = state.lang || l10n.en;
+
     // Build combinations from enabled, price-affecting groups only
     var groups = p.variation_groups || [];
     var affectedGroups = groups.filter(function(g) { return g.affects_price !== false; });
     var priceCombos = buildCombinations(affectedGroups);
     if (priceCombos.length === 0) {
-        priceCombos = [{ values: [], label: 'Base' }];
+        priceCombos = [{ values: [], label: lang.base }];
     }
 
     // Only show enabled combinations
@@ -304,12 +581,12 @@ function updateTopbarPriceVariationDropdown() {
         return state.combinationEnabled[c.label] !== false;
     });
     if (enabledCombos.length === 0) {
-        enabledCombos = [{ values: [], label: 'Base' }];
+        enabledCombos = [{ values: [], label: lang.base }];
     }
 
     // Preserve current selection
     var curVal = select.value;
-    select.innerHTML = '<option value="">All</option>';
+    select.innerHTML = '<option value="">' + escapeHtml(lang.all) + '</option>';
     enabledCombos.forEach(function(c) {
         var opt = document.createElement('option');
         opt.value = c.label;
@@ -341,51 +618,59 @@ function renderActiveTab() {
 function renderProductTab(container) {
     var p = state.product;
     if (!p) return;
+    var lang = state.lang || l10n.en;
 
     var html = '';
 
-    // ── Title / Code bar (always shown) ──
-    html += '<div class="section-header">Product Info</div>';
+    // ── Title / Code / Unit bar (always shown) ──
+    html += '<div class="section-header">' + escapeHtml(lang.productInfo) + '</div>';
     html += '<div class="form-row" style="margin-bottom:16px">';
-    html += '<div class="form-group"><label>Title</label><input type="text" id="prod-title-input" value="' + escapeHtml(p.title || '') + '" style="width:100%" /></div>';
-    html += '<div class="form-group"><label>Code</label><input type="text" id="prod-code-input" value="' + escapeHtml(p.code || '') + '" style="width:200px" /></div>';
+    html += '<div class="form-group"><label>' + escapeHtml(lang.title) + '</label><input type="text" id="prod-title-input" value="' + escapeHtml(p.title || '') + '" style="width:100%" /></div>';
+    html += '<div class="form-group"><label>' + escapeHtml(lang.code) + '</label><input type="text" id="prod-code-input" value="' + escapeHtml(p.code || '') + '" style="width:200px" /></div>';
+    html += '<div class="form-group"><label>' + escapeHtml(lang.unit) + '</label><input type="text" id="prod-unit-input" value="' + escapeHtml(p.unit || '') + '" style="width:150px" placeholder="e.g. kg, pcs, m" /></div>';
     html += '</div>';
 
     // ── Photos ──
-    html += '<div class="section-header">Photos</div>';
+    html += '<div class="section-header">' + escapeHtml(lang.photos) + '</div>';
     html += '<div class="photo-grid">';
     if (p.photos && p.photos.length > 0) {
         p.photos.forEach(function(photo, idx) {
             html += '<div class="photo-item" data-photo-index="' + idx + '">';
             html += '<img src="' + photo + '" alt="Photo ' + (idx + 1) + '" loading="lazy">';
-            html += '<button class="remove-btn" data-action="remove-photo" data-index="' + idx + '" title="Remove photo">✕</button>';
+            html += '<button class="remove-btn" data-action="remove-photo" data-index="' + idx + '" title="' + escapeHtml(lang.removePhoto) + '">✕</button>';
+            if (idx > 0) {
+                html += '<button class="photo-move-left" data-action="move-photo" data-index="' + idx + '" data-direction="-1" title="' + escapeHtml(lang.movePhotoLeft) + '">◀</button>';
+            }
+            if (idx < p.photos.length - 1) {
+                html += '<button class="photo-move-right" data-action="move-photo" data-index="' + idx + '" data-direction="1" title="' + escapeHtml(lang.movePhotoRight) + '">▶</button>';
+            }
             html += '</div>';
         });
     }
     html += '<div class="photo-upload" id="photo-upload-btn">';
     html += '<span style="font-size:24px">➕</span>';
-    html += '<span>Add Photo</span>';
+    html += '<span>' + escapeHtml(lang.addPhoto) + '</span>';
     html += '</div>';
     html += '</div>';
-    html += '<p style="font-size:11px;color:var(--text-muted);margin-top:8px">📸 ' + (p.photoCount || 0) + ' photo(s)</p>';
+    html += '<p style="font-size:11px;color:var(--text-muted);margin-top:8px">📸 ' + (p.photoCount || 0) + ' ' + escapeHtml(lang.photosCount) + '</p>';
 
     // ── Description ──
-    html += '<div class="section-header" style="margin-top:20px">Description</div>';
+    html += '<div class="section-header" style="margin-top:20px">' + escapeHtml(lang.description) + '</div>';
     html += '<div class="description-content" id="description-view">';
-    html += renderMarkdown(p.description || '');
+    html += renderMarkdown(p.description || '', lang);
     html += '</div>';
     html += '<div style="margin-top:8px;display:flex;gap:8px">';
-    html += '<button class="btn btn-sm btn-primary" id="desc-edit-btn">✏️ Edit</button>';
+    html += '<button class="btn btn-sm btn-primary" id="desc-edit-btn">✏️ ' + escapeHtml(lang.edit) + '</button>';
     html += '</div>';
 
     // ── Price History ──
     var history = state.priceHistory || [];
-    html += '<div class="section-header" style="margin-top:20px">Price History</div>';
+    html += '<div class="section-header" style="margin-top:20px">' + escapeHtml(lang.priceHistory) + '</div>';
     if (history.length === 0) {
-        html += '<div class="empty-tab">No prices recorded yet.</div>';
+        html += '<div class="empty-tab">' + escapeHtml(lang.noPrices) + '</div>';
     } else {
         html += '<table class="price-table">';
-        html += '<thead><tr><th>Date</th><th>Variation</th><th>Price</th><th>Currency</th></tr></thead><tbody>';
+        html += '<thead><tr><th>' + escapeHtml(lang.date) + '</th><th>' + escapeHtml(lang.variation) + '</th><th>' + escapeHtml(lang.price) + '</th><th>' + escapeHtml(lang.currency) + '</th><th>' + escapeHtml(lang.actions) + '</th></tr></thead><tbody>';
         for (var i = history.length - 1; i >= 0; i--) {
             var rec = history[i];
             var dateStr = rec.date ? rec.date.slice(0, 10) : new Date(rec.timestamp * 1000).toISOString().slice(0, 10);
@@ -394,6 +679,10 @@ function renderProductTab(container) {
             html += '<td>' + escapeHtml(rec.variation || '—') + '</td>';
             html += '<td>' + rec.price.toFixed(2) + '</td>';
             html += '<td>' + escapeHtml(rec.currency || 'USD') + '</td>';
+            html += '<td>';
+            html += '<button class="btn btn-xs" data-action="edit-price" data-index="' + i + '" title="' + escapeHtml(lang.editPrice) + '">✏️</button> ';
+            html += '<button class="btn btn-xs btn-danger" data-action="delete-price" data-index="' + i + '" title="' + escapeHtml(lang.deletePrice) + '">🗑️</button>';
+            html += '</td>';
             html += '</tr>';
         }
         html += '</tbody></table>';
@@ -404,6 +693,8 @@ function renderProductTab(container) {
 }
 
 function wireProductTab(container) {
+    var lang = state.lang || l10n.en;
+
     // Title input
     var titleInput = document.getElementById('prod-title-input');
     if (titleInput) {
@@ -422,6 +713,15 @@ function wireProductTab(container) {
         });
     }
 
+    // Unit input
+    var unitInput = document.getElementById('prod-unit-input');
+    if (unitInput) {
+        unitInput.addEventListener('input', function() {
+            state.product.unit = this.value;
+            state.modified = true;
+        });
+    }
+
     // Remove photo buttons
     container.querySelectorAll('[data-action="remove-photo"]').forEach(function(btn) {
         btn.addEventListener('click', async function() {
@@ -431,6 +731,20 @@ function wireProductTab(container) {
                 setState({ product: result });
             } catch (err) {
                 setState({ error: 'Remove failed: ' + err.message });
+            }
+        });
+    });
+
+    // Move photo buttons
+    container.querySelectorAll('[data-action="move-photo"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var idx = parseInt(btn.dataset.index);
+            var dir = parseInt(btn.dataset.direction);
+            try {
+                var result = await api.movePhoto(state.filepath, idx, dir);
+                setState({ product: result });
+            } catch (err) {
+                setState({ error: 'Move failed: ' + err.message });
             }
         });
     });
@@ -467,8 +781,8 @@ function wireProductTab(container) {
                 escapeHtml(currentText) +
                 '</textarea>' +
                 '<div style="margin-top:8px;display:flex;gap:8px">' +
-                '<button class="btn btn-sm btn-primary" id="desc-save-btn">💾 Save</button>' +
-                '<button class="btn btn-sm" id="desc-cancel-btn">Cancel</button>' +
+                '<button class="btn btn-sm btn-primary" id="desc-save-btn">💾 ' + escapeHtml(lang.save) + '</button>' +
+                '<button class="btn btn-sm" id="desc-cancel-btn">' + escapeHtml(lang.cancel) + '</button>' +
                 '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Supports Markdown</span>' +
                 '</div>';
 
@@ -485,6 +799,41 @@ function wireProductTab(container) {
             });
         });
     }
+
+    // Edit price buttons
+    container.querySelectorAll('[data-action="edit-price"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = parseInt(btn.dataset.index);
+            var rec = state.priceHistory[idx];
+            var newPrice = prompt(lang.editPricePrompt, rec.price.toFixed(2));
+            if (newPrice === null) return;
+            var newCurrency = prompt(lang.editCurrencyPrompt, rec.currency || 'USD');
+            if (newCurrency === null) return;
+            newCurrency = newCurrency.trim().toUpperCase();
+            if (newCurrency.length !== 3) { setState({ error: lang.invalidCurrency }); return; }
+            var priceVal = parseFloat(newPrice);
+            if (isNaN(priceVal) || priceVal <= 0) { setState({ error: lang.invalidPrice }); return; }
+            api.editPrice(state.filepath, idx, priceVal, newCurrency).then(function(newHistory) {
+                setState({ priceHistory: newHistory });
+            }).catch(function(err) {
+                setState({ error: 'Edit failed: ' + err.message });
+            });
+        });
+    });
+
+    // Delete price buttons
+    container.querySelectorAll('[data-action="delete-price"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var idx = parseInt(btn.dataset.index);
+            if (!confirm(lang.deletePrice)) return;
+            try {
+                var newHistory = await api.deletePrice(state.filepath, idx);
+                setState({ priceHistory: newHistory });
+            } catch (err) {
+                setState({ error: 'Delete failed: ' + err.message });
+            }
+        });
+    });
 }
 
 // ========================================================================
@@ -523,6 +872,7 @@ function buildCombinations(groups) {
 function renderVariationsTab(container) {
     var p = state.product;
     if (!p) return;
+    var lang = state.lang || l10n.en;
 
     var groups = p.variation_groups || [];
     var combinations = buildCombinations(groups);
@@ -530,22 +880,22 @@ function renderVariationsTab(container) {
     var html = '';
 
     // ── Section: Group Editor ──
-    html += '<div class="section-header">Variation Groups</div>';
+    html += '<div class="section-header">' + escapeHtml(lang.variationGroups) + '</div>';
     html += '<div class="variation-groups-container">';
 
     if (groups.length === 0) {
-        html += '<div class="empty-tab">No variation groups defined. Add groups like Color, Size, or Material.</div>';
+        html += '<div class="empty-tab">' + escapeHtml(lang.noVariationGroups) + '</div>';
     } else {
         groups.forEach(function(group, gi) {
             html += '<div class="variation-group-card" data-group-index="' + gi + '">';
             html += '<div class="variation-group-header">';
             html += '<input type="text" class="variation-group-name" value="' + escapeHtml(group.name) + '" placeholder="Group name (e.g. Color)" data-gi="' + gi + '" />';
-            html += '<button class="btn btn-xs btn-danger" data-action="delete-group" data-gi="' + gi + '" title="Delete group">✕</button>';
+            html += '<button class="btn btn-xs btn-danger" data-action="delete-group" data-gi="' + gi + '" title="' + escapeHtml(lang.deleteGroup) + '">✕</button>';
             html += '</div>';
             html += '<div class="variation-group-toggle">';
             html += '<label>';
             html += '<input type="checkbox" class="variation-affects-price" data-gi="' + gi + '" ' + (group.affects_price !== false ? 'checked' : '') + ' />';
-            html += ' Affects price';
+            html += ' ' + escapeHtml(lang.affectsPrice);
             html += '</label>';
             html += '</div>';
             html += '<div class="variation-group-values">';
@@ -553,29 +903,29 @@ function renderVariationsTab(container) {
             if (group.values && group.values.length > 0) {
                 group.values.forEach(function(val, vi) {
                     html += '<div class="variation-chip" data-gi="' + gi + '" data-vi="' + vi + '">';
-                    html += '<input type="text" class="variation-chip-input" value="' + escapeHtml(val) + '" placeholder="Value" data-gi="' + gi + '" data-vi="' + vi + '" />';
+                    html += '<input type="text" class="variation-chip-input" value="' + escapeHtml(val) + '" placeholder="' + escapeHtml(lang.addValue) + '" data-gi="' + gi + '" data-vi="' + vi + '" />';
                     html += '<button class="variation-chip-remove" data-action="remove-value" data-gi="' + gi + '" data-vi="' + vi + '">✕</button>';
                     html += '</div>';
                 });
             }
             // Add value button
-            html += '<button class="btn btn-xs btn-primary variation-add-value-btn" data-gi="' + gi + '">+ Value</button>';
+            html += '<button class="btn btn-xs btn-primary variation-add-value-btn" data-gi="' + gi + '">+ ' + escapeHtml(lang.addValue) + '</button>';
             html += '</div>'; // .variation-group-values
             html += '</div>'; // .variation-group-card
         });
     }
 
-    html += '<button class="btn btn-sm btn-primary" id="add-group-btn">➕ Add Group</button>';
+    html += '<button class="btn btn-sm btn-primary" id="add-group-btn">➕ ' + escapeHtml(lang.addGroup) + '</button>';
     html += '</div>'; // .variation-groups-container
 
     // ── Section: Combinations Preview ──
     html += '<div id="combinations-section">';
-    html += '<div class="section-header" style="margin-top:20px">Generated SKUs</div>';
+    html += '<div class="section-header" style="margin-top:20px">' + escapeHtml(lang.generatedSKUs) + '</div>';
 
     if (combinations.length === 0) {
-        html += '<div class="empty-tab">No SKU combinations to display. Add values to variation groups above.</div>';
+        html += '<div class="empty-tab">' + escapeHtml(lang.noSKU) + '</div>';
     } else {
-        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">' + combinations.length + ' SKU combination(s)</p>';
+        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">' + combinations.length + ' ' + escapeHtml(lang.skuCombinations) + '</p>';
         html += '<table class="combinations-table">';
         html += '<thead><tr>';
         html += '<th></th>'; // enable/disable column
@@ -702,14 +1052,15 @@ function renderCombinationsTable() {
 
     var groups = state.product.variation_groups || [];
     var combinations = buildCombinations(groups);
+    var lang = state.lang || l10n.en;
 
     var html = '';
-    html += '<div class="section-header" style="margin-top:20px">Generated SKUs</div>';
+    html += '<div class="section-header" style="margin-top:20px">' + escapeHtml(lang.generatedSKUs) + '</div>';
 
     if (combinations.length === 0) {
-        html += '<div class="empty-tab">No SKU combinations to display. Add values to variation groups above.</div>';
+        html += '<div class="empty-tab">' + escapeHtml(lang.noSKU) + '</div>';
     } else {
-        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">' + combinations.length + ' SKU combination(s)</p>';
+        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">' + combinations.length + ' ' + escapeHtml(lang.skuCombinations) + '</p>';
         html += '<table class="combinations-table">';
         html += '<thead><tr>';
         html += '<th></th>';
@@ -753,8 +1104,9 @@ function renderCombinationsTable() {
 // ========================================================================
 
 // Simple Markdown renderer
-function renderMarkdown(text) {
-    if (!text) return '<span style="color:var(--text-muted)">No description.</span>';
+function renderMarkdown(text, lang) {
+    if (!lang) lang = state.lang || l10n.en;
+    if (!text) return '<span style="color:var(--text-muted)">' + escapeHtml(lang.noDescription) + '</span>';
     var html = escapeHtml(text);
 
     // Code blocks (```...```)
