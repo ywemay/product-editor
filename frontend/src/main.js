@@ -9,6 +9,7 @@ var state = {
     activeTab: 'product',
     priceHistory: [],
     combinationEnabled: {},
+    combinationPhotos: {}, // label -> base64 data URL
     loading: false,
     error: '',
     success: '',
@@ -428,6 +429,7 @@ async function openProductFile(filepath) {
             product: product,
             priceHistory: history || [],
             combinationEnabled: ce,
+            combinationPhotos: {},
             loading: false,
             modified: false,
             activeTab: 'product',
@@ -447,6 +449,7 @@ function handleCloseFile() {
         priceHistory: [],
         modified: false,
         combinationEnabled: {},
+        combinationPhotos: {},
     });
 }
 
@@ -989,6 +992,7 @@ function renderVariationsTab(container) {
         html += '<table class="combinations-table">';
         html += '<thead><tr>';
         html += '<th></th>'; // enable/disable column
+        html += '<th>Photo</th>';
         groups.forEach(function(g) {
             var hdr = g.name || '(unnamed)';
             html += '<th>' + escapeHtml(hdr) + '</th>';
@@ -999,8 +1003,16 @@ function renderVariationsTab(container) {
         combinations.forEach(function(comb) {
             var enabled = state.combinationEnabled[comb.label] !== false;
             var rowClass = enabled ? '' : ' class="combo-disabled"';
+            var comboPhoto = state.combinationPhotos[comb.label];
             html += '<tr' + rowClass + '>';
             html += '<td><input type="checkbox" class="combo-enabled-toggle" data-combo="' + escapeHtml(comb.label) + '" ' + (enabled ? 'checked' : '') + ' title="Enable/disable this SKU combination" /></td>';
+            html += '<td>';
+            if (comboPhoto) {
+                html += '<img src="' + comboPhoto + '" class="combo-photo-thumb" data-combo="' + escapeHtml(comb.label) + '" title="Click to change photo" />';
+            } else {
+                html += '<button class="btn btn-xs combo-set-photo-btn" data-combo="' + escapeHtml(comb.label) + '">📷</button>';
+            }
+            html += '</td>';
             comb.values.forEach(function(v) {
                 html += '<td>' + escapeHtml(v) + '</td>';
             });
@@ -1103,6 +1115,47 @@ function wireVariationsTab(container) {
             updateTopbarPriceVariationDropdown();
         });
     });
+
+    // Set combo photo
+    container.querySelectorAll('.combo-set-photo-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            pickComboPhoto(btn.dataset.combo);
+        });
+    });
+
+    // Change combo photo (click on existing thumbnail)
+    container.querySelectorAll('.combo-photo-thumb').forEach(function(img) {
+        img.addEventListener('click', function() {
+            pickComboPhoto(img.dataset.combo);
+        });
+    });
+
+    // Clear combo photo on right-click
+    container.querySelectorAll('.combo-photo-thumb').forEach(function(img) {
+        img.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            var combo = img.dataset.combo;
+            delete state.combinationPhotos[combo];
+            renderCombinationsTable();
+        });
+    });
+}
+
+function pickComboPhoto(comboLabel) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.onchange = function() {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                state.combinationPhotos[comboLabel] = e.target.result;
+                renderCombinationsTable();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    };
+    input.click();
 }
 
 function renderCombinationsTable() {
@@ -1124,6 +1177,7 @@ function renderCombinationsTable() {
         html += '<table class="combinations-table">';
         html += '<thead><tr>';
         html += '<th></th>';
+        html += '<th>Photo</th>';
         groups.forEach(function(g) {
             var hdr = g.name || '(unnamed)';
             html += '<th>' + escapeHtml(hdr) + '</th>';
@@ -1134,8 +1188,16 @@ function renderCombinationsTable() {
         combinations.forEach(function(comb) {
             var enabled = state.combinationEnabled[comb.label] !== false;
             var rowClass = enabled ? '' : ' class="combo-disabled"';
+            var comboPhoto = state.combinationPhotos[comb.label];
             html += '<tr' + rowClass + '>';
             html += '<td><input type="checkbox" class="combo-enabled-toggle" data-combo="' + escapeHtml(comb.label) + '" ' + (enabled ? 'checked' : '') + ' title="Enable/disable this SKU combination" /></td>';
+            html += '<td>';
+            if (comboPhoto) {
+                html += '<img src="' + comboPhoto + '" class="combo-photo-thumb" data-combo="' + escapeHtml(comb.label) + '" title="Click to change photo" />';
+            } else {
+                html += '<button class="btn btn-xs combo-set-photo-btn" data-combo="' + escapeHtml(comb.label) + '">📷</button>';
+            }
+            html += '</td>';
             comb.values.forEach(function(v) {
                 html += '<td>' + escapeHtml(v) + '</td>';
             });
@@ -1155,6 +1217,27 @@ function renderCombinationsTable() {
             state.combinationEnabled[combo] = cb.checked;
             renderCombinationsTable();
             updateTopbarPriceVariationDropdown();
+        });
+    });
+
+    // Set/change combo photo
+    combosSection.querySelectorAll('.combo-set-photo-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            pickComboPhoto(btn.dataset.combo);
+        });
+    });
+
+    combosSection.querySelectorAll('.combo-photo-thumb').forEach(function(img) {
+        img.addEventListener('click', function() {
+            pickComboPhoto(img.dataset.combo);
+        });
+    });
+
+    combosSection.querySelectorAll('.combo-photo-thumb').forEach(function(img) {
+        img.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            delete state.combinationPhotos[img.dataset.combo];
+            renderCombinationsTable();
         });
     });
 }
