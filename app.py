@@ -133,6 +133,22 @@ if bottle is not None:
             return json_err(str(e))
 
 
+    @bottle_app.get("/api/launch-file")
+    def api_launch_file():
+        """Return the file path from launch argv (if any), then clear it."""
+        info_path = os.path.join(_this_dir, "data", "launch_file.json")
+        path = ""
+        if os.path.isfile(info_path):
+            try:
+                with open(info_path) as f:
+                    data = json.load(f)
+                    path = data.get("path", "")
+                os.remove(info_path)
+            except Exception:
+                pass
+        return json_ok({"path": path})
+
+
     @bottle_app.get("/api/health")
     def api_health():
         return json_ok({"status": "ok", "version": "1.0.0"})
@@ -203,6 +219,13 @@ def start_server():
 
 
 def main():
+    # Accept file path from command line argument (file association)
+    file_to_open = ""
+    if len(sys.argv) > 1:
+        arg_path = sys.argv[1].strip()
+        if arg_path.endswith(".prod") and os.path.isfile(arg_path):
+            file_to_open = os.path.realpath(arg_path)
+
     # Start Bottle in a background thread
     t = threading.Thread(target=start_server, daemon=True)
     t.start()
@@ -217,6 +240,14 @@ def main():
         min_size=(800, 600),
         text_select=True,
     )
+
+    # Store the initial file to open in a shared location the frontend can read
+    if file_to_open:
+        info_path = os.path.join(_this_dir, "data", "launch_file.json")
+        os.makedirs(os.path.dirname(info_path), exist_ok=True)
+        with open(info_path, "w") as f:
+            json.dump({"path": file_to_open}, f)
+
     webview.start(debug=False)
 
 

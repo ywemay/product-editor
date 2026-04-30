@@ -32,7 +32,20 @@ function escapeHtml(s) {
 document.addEventListener('DOMContentLoaded', function() {
     bindEvents();
     render();
+    // Check if launched with a .prod file from argv (file association)
+    checkLaunchFile();
 });
+
+async function checkLaunchFile() {
+    try {
+        var data = await fetch('/api/launch-file').then(function(r) { return r.json(); });
+        if (data && data.data && data.data.path) {
+            openProductFile(data.data.path);
+        }
+    } catch (err) {
+        // silent
+    }
+}
 
 function bindEvents() {
     // Open file buttons
