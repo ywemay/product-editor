@@ -1,0 +1,513 @@
+/* Products Desktop Editor — Editor logic
+ * 4-tab editor: Photos, Variations, Prices, Description
+ * Opens a single .prod file.
+ */
+
+var state = {
+    filepath: null,
+    product: null,
+    activeTab: 'photos',
+    priceHistory: [],
+    loading: false,
+    error: '',
+    success: '',
+    modified: false,
+};
+
+function setState(updates) {
+    Object.assign(state, updates);
+    render();
+}
+
+function escapeHtml(s) {
+    if (typeof s !== 'string') return s;
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ========================================================================
+// INIT
+// ========================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    bindEvents();
+    render();
+});
+
+function bindEvents() {
+    // Open file buttons
+    document.getElementById('btn-open-file').addEventListener('click', function() {
+        openFilePicker();
+    });
+    document.getElementById('btn-open-file-dialog').addEventListener('click', function() {
+        openFileDialog();
+    });
+
+    // Top bar actions
+    document.getElementById('btn-close-file').addEventListener('click', handleCloseFile);
+    document.getElementById('btn-save').addEventListener('click', handleSave);
+    document.getElementById('btn-save-as').addEventListener('click', handleSaveAs);
+
+    // Tab switching
+    document.getElementById('tabs').addEventListener('click', function(e) {
+        var btn = e.target.closest('.tab-btn');
+        if (!btn) return;
+        var tab = btn.dataset.tab;
+        if (tab && tab !== state.activeTab) {
+            setState({ activeTab: tab });
+        }
+    });
+
+    // Drag & drop
+    document.body.addEventListener('dragover', function(e) { e.preventDefault(); });
+    document.body.addEventListener('drop', function(e) {
+        e.preventDefault();
+        var files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            var path = files[0].path;
+            if (path.endsWith('.prod')) {
+                openProductFile(path);
+            }
+        }
+    });
+}
+
+// ========================================================================
+// FILE OPERATIONS
+// ========================================================================
+
+async function openFilePicker() {
+    try {
+        var result = await api.openFileDialog();
+        if (result && result.path) {
+            openProductFile(result.path);
+        }
+    } catch (err) {
+        setState({ error: 'Failed to open file dialog: ' + err.message });
+    }
+}
+
+async function openFileDialog() {
+    openFilePicker();
+}
+
+async function openProductFile(filepath) {
+    setState({ loading: true, error: '' });
+    try {
+        var product = await api.openProduct(filepath);
+        var history = await api.getPriceHistory(filepath);
+        setState({
+            filepath: filepath,
+            product: product,
+            priceHistory: history || [],
+            loading: false,
+            modified: false,
+            activeTab: 'photos',
+        });
+    } catch (err) {
+        setState({ loading: false, error: 'Failed to open file: ' + err.message });
+    }
+}
+
+function handleCloseFile() {
+    if (state.modified) {
+        if (!confirm('You have unsaved changes. Close anyway?')) return;
+    }
+    setState({ filepath: null, product: null, priceHistory: [], modified: false });
+}
+
+async function handleSave() {
+    if (!state.filepath || !state.product) return;
+    try {
+        var product = state.product;
+        var result = await api.saveProduct(state.filepath, {
+            title: product.title,
+            code: product.code,
+            description: product.description,
+        });
+        setState({ product: result, modified: false, success: '✅ Saved' });
+    } catch (err) {
+        setState({ error: 'Save failed: ' + err.message });
+    }
+}
+
+async function handleSaveAs() {
+    try {
+        var result = await api.saveFileAs();
+    } catch (err) {
+        setState({ error: 'Save As failed: ' + err.message });
+        return;
+    }
+    if (!result || !result.path) return;
+    // Future: implement copy + save to new path
+    setState({ success: 'Save As dialog closed' });
+}
+
+// ========================================================================
+// RENDER
+// ========================================================================
+
+function render() {
+    var startPage = document.getElementById('start-page');
+    var editorView = document.getElementById('editor-view');
+    var errorEl = document.getElementById('app-error');
+
+    if (state.filepath && state.product) {
+        startPage.style.display = 'none';
+        editorView.style.display = 'flex';
+        renderTopBar();
+        renderTabs();
+        renderActiveTab();
+    } else {
+        startPage.style.display = 'flex';
+        editorView.style.display = 'none';
+        // Show error on start page if any
+        var startError = document.getElementById('start-error');
+        if (!startError) {
+            startError = document.createElement('p');
+            startError.id = 'start-error';
+            startError.style.cssText = 'color:var(--accent-red);font-size:13px';
+            document.getElementById('start-page').appendChild(startError);
+        }
+        startError.textContent = state.error || '';
+        if (state.error) {
+            setTimeout(function() { setState({ error: '' }); }, 3000);
+        }
+    }
+}
+
+function renderTopBar() {
+    var p = state.product;
+    if (!p) return;
+    var filename = state.filepath.split('/').pop() || state.filepath;
+    document.getElementById('editor-filename').textContent = filename;
+    var modEl = document.getElementById('editor-modified');
+    modEl.style.display = state.modified ? '' : 'none';
+    document.getElementById('editor-icon').textContent = p.photos && p.photos.length > 0 ? '' : '📦';
+    var successEl = document.getElementById('editor-success');
+    if (state.success) {
+        if (!successEl) {
+            successEl = document.createElement('span');
+            successEl.id = 'editor-success';
+            successEl.style.cssText = 'font-size:11px;color:var(--accent-green);margin-right:8px';
+            document.getElementById('editor-topbar').insertBefore(
+                successEl, document.getElementById('btn-close-file')
+            );
+        }
+        successEl.textContent = state.success;
+        setTimeout(function() { if (state.success) setState({ success: '' }); }, 3000);
+    } else if (successEl) {
+        successEl.textContent = '';
+    }
+}
+
+function renderTabs() {
+    var tabsEl = document.getElementById('tabs');
+    var tabNames = ['photos', 'variations', 'prices', 'description'];
+    tabsEl.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
+    });
+}
+
+function renderActiveTab() {
+    var container = document.getElementById('tab-content');
+    if (state.activeTab === 'photos') renderPhotosTab(container);
+    else if (state.activeTab === 'variations') renderVariationsTab(container);
+    else if (state.activeTab === 'prices') renderPricesTab(container);
+    else if (state.activeTab === 'description') renderDescriptionTab(container);
+}
+
+// ========================================================================
+// PHOTOS TAB
+// ========================================================================
+
+function renderPhotosTab(container) {
+    var p = state.product;
+    if (!p) return;
+
+    var html = '<div class="photo-grid">';
+    if (p.photos && p.photos.length > 0) {
+        p.photos.forEach(function(photo, idx) {
+            html += '<div class="photo-item" data-photo-index="' + idx + '">';
+            html += '<img src="' + photo + '" alt="Photo ' + (idx + 1) + '" loading="lazy">';
+            html += '<button class="remove-btn" data-action="remove-photo" data-index="' + idx + '" title="Remove photo">✕</button>';
+            html += '</div>';
+        });
+    }
+    html += '<div class="photo-upload" id="photo-upload-btn">';
+    html += '<span style="font-size:24px">➕</span>';
+    html += '<span>Add Photo</span>';
+    html += '</div>';
+    html += '</div>';
+    html += '<p style="font-size:11px;color:var(--text-muted);margin-top:8px">📸 ' + (p.photoCount || 0) + ' photo(s)</p>';
+
+    container.innerHTML = html;
+
+    // Wire up remove buttons
+    container.querySelectorAll('[data-action="remove-photo"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var idx = parseInt(btn.dataset.index);
+            try {
+                var result = await api.removePhoto(state.filepath, idx);
+                setState({ product: result });
+            } catch (err) {
+                setState({ error: 'Remove failed: ' + err.message });
+            }
+        });
+    });
+
+    // Wire up upload button
+    document.getElementById('photo-upload-btn').addEventListener('click', function() {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/jpeg,image/png,image/webp';
+        input.onchange = async function() {
+            if (input.files && input.files[0]) {
+                try {
+                    var result = await api.addPhoto(state.filepath, input.files[0].path);
+                    setState({ product: result });
+                } catch (err) {
+                    setState({ error: 'Add photo failed: ' + err.message });
+                }
+            }
+        };
+        input.click();
+    });
+}
+
+// ========================================================================
+// VARIATIONS TAB
+// ========================================================================
+
+function renderVariationsTab(container) {
+    var p = state.product;
+    if (!p) return;
+
+    var vars = p.variations || [];
+    var html = '';
+    html += '<div class="section-header">Product Variations</div>';
+    html += '<div id="variations-list">';
+    if (vars.length === 0) {
+        html += '<div class="empty-tab">No variations yet.</div>';
+    } else {
+        vars.forEach(function(v, idx) {
+            html += '<div class="variation-row">';
+            html += '<input type="text" class="variation-input" value="' + escapeHtml(v) + '" data-idx="' + idx + '" placeholder="Variation name" />';
+            html += '<button class="btn btn-xs btn-danger" data-action="remove-variation" data-idx="' + idx + '">✕</button>';
+            html += '</div>';
+        });
+    }
+    html += '</div>';
+    html += '<button class="btn btn-sm btn-primary" id="add-variation-btn" style="margin-top:8px">➕ Add Variation</button>';
+    html += '<p style="font-size:11px;color:var(--text-muted);margin-top:6px">⚠️ Variations are stored in localStorage for now.</p>';
+
+    container.innerHTML = html;
+
+    // Wire up remove
+    container.querySelectorAll('[data-action="remove-variation"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = parseInt(btn.dataset.idx);
+            var vars = state.product.variations || [];
+            vars.splice(idx, 1);
+            state.product.variations = vars;
+            saveVariationsToLocal();
+            setState({ modified: true });
+        });
+    });
+
+    document.getElementById('add-variation-btn').addEventListener('click', function() {
+        var vars = state.product.variations || [];
+        vars.push('');
+        state.product.variations = vars;
+        saveVariationsToLocal();
+        setState({ modified: true });
+    });
+
+    container.querySelectorAll('.variation-input').forEach(function(input) {
+        input.addEventListener('input', function() {
+            var idx = parseInt(input.dataset.idx);
+            var vars = state.product.variations || [];
+            vars[idx] = input.value;
+            state.product.variations = vars;
+            saveVariationsToLocal();
+            setState({ modified: true });
+        });
+    });
+}
+
+function saveVariationsToLocal() {
+    try {
+        var key = 'variations-' + (state.filepath || '');
+        localStorage.setItem(key, JSON.stringify(state.product.variations || []));
+    } catch (e) { /* ignore */ }
+}
+
+function loadVariationsFromLocal() {
+    try {
+        var key = 'variations-' + (state.filepath || '');
+        var stored = localStorage.getItem(key);
+        if (stored && state.product) {
+            state.product.variations = JSON.parse(stored);
+        }
+    } catch (e) { /* ignore */ }
+}
+
+// ========================================================================
+// PRICES TAB
+// ========================================================================
+
+function renderPricesTab(container) {
+    var p = state.product;
+    if (!p) return;
+
+    var vars = p.variations || [];
+    var history = state.priceHistory || [];
+
+    var html = '';
+    html += '<div class="section-header">Add Price</div>';
+    html += '<div class="add-price-form">';
+    html += '<div class="form-group"><label>Price</label><input type="number" id="new-price-input" step="0.01" placeholder="0.00" /></div>';
+    html += '<div class="form-group"><label>Currency</label><input type="text" id="new-currency-input" value="USD" maxlength="3" style="width:60px" /></div>';
+    html += '<div class="form-group"><label>Variation</label><select id="new-variation-select">';
+    html += '<option value="">— All —</option>';
+    vars.forEach(function(v) {
+        html += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>';
+    });
+    html += '</select></div>';
+    html += '<button class="btn btn-primary" id="add-price-btn" style="margin-bottom:2px">➕ Add</button>';
+    html += '</div>';
+
+    html += '<div class="section-header">Price History</div>';
+    if (history.length === 0) {
+        html += '<div class="empty-tab">No prices recorded yet.</div>';
+    } else {
+        html += '<table class="price-table">';
+        html += '<thead><tr><th>Date</th><th>Variation</th><th>Price</th><th>Currency</th></tr></thead><tbody>';
+        // Show newest first
+        for (var i = history.length - 1; i >= 0; i--) {
+            var rec = history[i];
+            var dateStr = rec.date ? rec.date.slice(0, 10) : new Date(rec.timestamp * 1000).toISOString().slice(0, 10);
+            html += '<tr>';
+            html += '<td>' + escapeHtml(dateStr) + '</td>';
+            html += '<td>' + escapeHtml(rec.variation || '—') + '</td>';
+            html += '<td>' + rec.price.toFixed(2) + '</td>';
+            html += '<td>' + escapeHtml(rec.currency || 'USD') + '</td>';
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+    }
+
+    container.innerHTML = html;
+
+    document.getElementById('add-price-btn').addEventListener('click', async function() {
+        var price = parseFloat(document.getElementById('new-price-input').value);
+        if (isNaN(price) || price <= 0) {
+            setState({ error: 'Enter a valid price' });
+            return;
+        }
+        var currency = document.getElementById('new-currency-input').value.trim().toUpperCase() || 'USD';
+        var variation = document.getElementById('new-variation-select').value;
+        try {
+            var newHistory = await api.addPrice(state.filepath, currency, variation, price);
+            setState({ priceHistory: newHistory });
+            document.getElementById('new-price-input').value = '';
+        } catch (err) {
+            setState({ error: 'Add price failed: ' + err.message });
+        }
+    });
+}
+
+// ========================================================================
+// DESCRIPTION TAB
+// ========================================================================
+
+function renderDescriptionTab(container) {
+    var p = state.product;
+    if (!p) return;
+
+    var isEditing = container.dataset.editing === 'true';
+
+    var html = '';
+    html += '<div class="section-header">Product Description</div>';
+
+    if (!isEditing) {
+        html += '<div class="description-content" id="description-view">';
+        html += renderMarkdown(p.description || '');
+        html += '</div>';
+        html += '<div style="margin-top:12px;display:flex;gap:8px">';
+        html += '<button class="btn btn-sm btn-primary" id="desc-edit-btn">✏️ Edit</button>';
+        html += '</div>';
+    } else {
+        html += '<textarea id="description-editor" rows="12" style="width:100%;padding:10px;font-size:14px;font-family:var(--font-mono);resize:vertical">';
+        html += escapeHtml(p.description || '');
+        html += '</textarea>';
+        html += '<div style="margin-top:8px;display:flex;gap:8px">';
+        html += '<button class="btn btn-sm btn-primary" id="desc-save-btn">💾 Save</button>';
+        html += '<button class="btn btn-sm" id="desc-cancel-btn">Cancel</button>';
+        html += '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Supports Markdown</span>';
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+
+    if (!isEditing) {
+        document.getElementById('desc-edit-btn').addEventListener('click', function() {
+            container.dataset.editing = 'true';
+            renderDescriptionTab(container);
+        });
+    } else {
+        document.getElementById('desc-save-btn').addEventListener('click', function() {
+            var newDesc = document.getElementById('description-editor').value;
+            state.product.description = newDesc;
+            setState({ modified: true, success: 'Description updated (save to persist)' });
+            container.dataset.editing = 'false';
+            renderDescriptionTab(container);
+        });
+        document.getElementById('desc-cancel-btn').addEventListener('click', function() {
+            container.dataset.editing = 'false';
+            renderDescriptionTab(container);
+        });
+    }
+}
+
+// Simple Markdown renderer
+function renderMarkdown(text) {
+    if (!text) return '<span style="color:var(--text-muted)">No description.</span>';
+    var html = escapeHtml(text);
+
+    // Code blocks (```...```)
+    html = html.replace(/```([\s\S]*?)```/g, function(m, code) {
+        return '<pre><code>' + code + '</code></pre>';
+    });
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Headers (###, ##, #)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Bold & italic
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Blockquotes
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+    // Line breaks → paragraphs
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = '<p>' + html + '</p>';
+    html = html.replace(/<p><\/p>/g, '');
+
+    return html;
+}
+
+// ========================================================================
+// UTILITY FUNCTIONS
+// ========================================================================
+
+async function _showConfirmDialog(msg) {
+    return confirm(msg);
+}

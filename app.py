@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Products Desktop Editor — Single-file .prod editor.
+
+Opens one .prod file at a time. No gallery, no sidebar, no company/deals.
+"""
+
+import sys
+import os
+import json
+import threading
+import webview
+
+# Conditional platform import
+try:
+    import bottle
+    from bottle import route, request, response, static_file
+except ImportError:
+    bottle = None
+
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Ensure prodlib is importable
+sys.path.insert(0, _this_dir)
+from prodlib import store
+
+# ---------------------------------------------------------------------------
+# Bottle HTTP server
+# ---------------------------------------------------------------------------
+
+if bottle is not None:
+    bottle_app = bottle.Bottle()
+
+    def json_ok(data):
+        response.content_type = "application/json"
+        return json.dumps({"ok": True, "data": data})
+
+    def json_err(msg):
+        response.content_type = "application/json"
+        response.status = 400
+        return json.dumps({"ok": False, "error": msg})
+
+
+    @bottle_app.post("/api/open")
+    def api_open():
+        """Open a .prod file and return its data."""
+        body = request.json or {}
+        path = body.get("path", "")
+        if not path:
+            return json_err("path is required")
+        if not os.path.isfile(path):
+            return json_err(f"File not found: {path}")
+        try:
+            result = store.open_product(path)
+            result["filepath"] = path
+            return json_ok(result)
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/save")
+    def api_save():
+        """Save product fields (title, code, description)."""
+        body = request.json or {}
+        path = body.get("path", "")
+        if not path:
+            return json_err("path is required")
+        try:
+            from prodlib.core import Product
+            p = Product.open(path)
+            if "title" in body.get("product", {}):
+                p.header.title = body["product"]["title"]
+            if "code" in body.get("product", {}):
+                p.header.code = body["product"]["code"]
+            if "description" in body.get("product", {}):
+                p.header.description = body["product"]["description"]
+            p.save(path)
+            return json_ok(store.open_product(path))
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/price/add")
+    def api_price_add():
+        body = request.json or {}
+        path = body.get("path", "")
+        if not path:
+            return json_err("path is required")
+        try:
+            store.add_price(path, body.get("currency", "USD"),
+                          body.get("variation", ""), float(body.get("price", 0)))
+            return json_ok(store.get_price_history(path))
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/price/history")
+    def api_price_history():
+        body = request.json or {}
+        path = body.get("path", "")
+        if not path:
+            return json_err("path is required")
+        try:
+            return json_ok(store.get_price_history(path))
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/photo/add")
+    def api_photo_add():
+        body = request.json or {}
+        path = body.get("path", "")
+        photo_path = body.get("photoPath", "")
+        if not path or not photo_path:
+            return json_err("path and photoPath are required")
+        try:
+            store.add_photo(path, photo_path)
+            return json_ok(store.open_product(path))
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.post("/api/photo/remove")
+    def api_photo_remove():
+        body = request.json or {}
+        path = body.get("path", "")
+        index = body.get("index", -1)
+        if not path or index < 0:
+            return json_err("path and index are required")
+        try:
+            store.remove_photo(path, index)
+            return json_ok(store.open_product(path))
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.get("/api/health")
+    def api_health():
+        return json_ok({"status": "ok", "version": "1.0.0"})
+
+
+    @bottle_app.get("/api/open-file")
+    def api_open_file():
+        """Return a file path selected via native file dialog."""
+        try:
+            import webview
+            file_types = ("Product files (*.prod)",)
+            result = webview.windows[0].create_file_dialog(
+                webview.OPEN_DIALOG, allow_multiple=False,
+                file_types=file_types
+            )
+            path = result[0] if result else ""
+            return json_ok({"path": path})
+        except Exception as e:
+            return json_err(str(e))
+
+
+    @bottle_app.get("/api/save-file-as")
+    def api_save_file_as():
+        """Return a file path for Save As via native file dialog."""
+        try:
+            file_types = ("Product files (*.prod)",)
+            result = webview.windows[0].create_file_dialog(
+                webview.SAVE_DIALOG, allow_multiple=False,
+                file_types=file_types, save_filename="product.prod"
+            )
+            return json_ok({"path": result if result else ""})
+        except Exception as e:
+            return json_err(str(e))
+
+
+    # ── CORS ──
+    @bottle_app.hook("after_request")
+    def enable_cors():
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+
+
+    # ── Static files (frontend) ──
+    @bottle_app.route("/")
+    def index():
+        return static_file("index.html", root=os.path.join(_this_dir, "frontend"))
+
+    @bottle_app.route("/src/<filename>")
+    def static_src(filename):
+        return static_file(filename, root=os.path.join(_this_dir, "frontend", "src"))
+
+    @bottle_app.route("/<filename>")
+    def static_root(filename):
+        return static_file(filename, root=os.path.join(_this_dir, "frontend"))
+
+else:
+    bottle_app = None
+
+
+# ---------------------------------------------------------------------------
+# PyWebView window
+# ---------------------------------------------------------------------------
+
+def start_server():
+    if bottle_app:
+        bottle_app.run(host="127.0.0.1", port=18091, quiet=True)
+
+
+def main():
+    # Start Bottle in a background thread
+    t = threading.Thread(target=start_server, daemon=True)
+    t.start()
+
+    # Open pywebview window
+    webview.create_window(
+        "Products Editor",
+        "http://127.0.0.1:18091",
+        width=1100,
+        height=780,
+        resizable=True,
+        min_size=(800, 600),
+        text_select=True,
+    )
+    webview.start(debug=False)
+
+
+if __name__ == "__main__":
+    main()
