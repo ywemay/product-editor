@@ -25,4 +25,5 @@ const api = {
     editPrice:          (p, index, price, currency) => apiCall('POST', '/api/price/edit', { path: p, index, price, currency }),
     deletePrice:        (p, index) => apiCall('POST', '/api/price/delete', { path: p, index }),
     movePhoto:          (p, index, direction) => apiCall('POST', '/api/photo/move', { path: p, index, direction }),
+    exportPhoto:        (p, index) => apiCall('POST', '/api/photo/export', { path: p, index }),
 };

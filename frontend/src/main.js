@@ -42,6 +42,12 @@ var l10n = {
         save: 'Save',
         saveAs: 'Save As...',
         close: 'Close',
+        share: 'Share',
+        email: 'Email',
+        copyToClipboard: 'Copy info to clipboard',
+        copied: 'Copied!',
+        shareTitle: 'Share Product',
+        exportPhoto: 'Export photo',
         addPrice: 'Add Price',
         product: 'Product',
         variations: 'Variations',
@@ -101,6 +107,12 @@ var l10n = {
         save: '保存',
         saveAs: '另存为...',
         close: '关闭',
+        share: '分享',
+        email: '邮件',
+        copyToClipboard: '复制信息到剪贴板',
+        copied: '已复制！',
+        shareTitle: '分享产品',
+        exportPhoto: '导出照片',
         addPrice: '添加价格',
         product: '产品',
         variations: '规格',
@@ -160,6 +172,12 @@ var l10n = {
         save: 'Сохранить',
         saveAs: 'Сохранить как...',
         close: 'Закрыть',
+        share: 'Поделиться',
+        email: 'Email',
+        copyToClipboard: 'Скопировать в буфер',
+        copied: 'Скопировано!',
+        shareTitle: 'Поделиться товаром',
+        exportPhoto: 'Экспорт фото',
         addPrice: 'Добавить цену',
         product: 'Товар',
         variations: 'Вариации',
@@ -325,6 +343,7 @@ function bindEvents() {
     document.getElementById('btn-close-file').addEventListener('click', handleCloseFile);
     document.getElementById('btn-save').addEventListener('click', handleSave);
     document.getElementById('btn-save-as').addEventListener('click', handleSaveAs);
+    document.getElementById('btn-send').addEventListener('click', handleSend);
     document.getElementById('tb-add-price-btn').addEventListener('click', handleTopbarAddPrice);
 
     // Tab switching
@@ -337,7 +356,7 @@ function bindEvents() {
         }
     });
 
-    // Drag & drop — works even with a product already open
+    // Drag & drop — handles .prod files AND image files
     document.body.addEventListener('dragover', function(e) { e.preventDefault(); });
     document.body.addEventListener('drop', function(e) {
         e.preventDefault();
@@ -350,6 +369,15 @@ function bindEvents() {
                     if (!confirm((state.lang || l10n.en).confirmOpen)) return;
                 }
                 openProductFile(path);
+            } else if (path.match(/\.(jpg|jpeg|png|webp)$/i)) {
+                // Image file dropped — add as photo if product is open
+                if (state.filepath && state.product) {
+                    api.addPhoto(state.filepath, path).then(function(result) {
+                        setState({ product: result });
+                    }).catch(function(err) {
+                        setState({ error: 'Failed to add dropped photo: ' + err.message });
+                    });
+                }
             }
         }
     });
@@ -512,6 +540,7 @@ function renderTopBar() {
     var closeBtn = document.getElementById('btn-close-file');
     var saveBtn = document.getElementById('btn-save');
     var saveAsBtn = document.getElementById('btn-save-as');
+    var sendBtn = document.getElementById('btn-send');
     var divider = document.getElementById('tb-divider');
     var priceForm = document.getElementById('topbar-price-form');
 
@@ -525,6 +554,7 @@ function renderTopBar() {
         closeBtn.style.display = '';
         saveBtn.style.display = '';
         saveAsBtn.style.display = '';
+        sendBtn.style.display = '';
         divider.style.display = '';
         priceForm.style.display = 'flex';
 
@@ -539,6 +569,7 @@ function renderTopBar() {
         closeBtn.style.display = 'none';
         saveBtn.style.display = 'none';
         saveAsBtn.style.display = 'none';
+        sendBtn.style.display = 'none';
         divider.style.display = 'none';
         priceForm.style.display = 'none';
     }
@@ -638,6 +669,7 @@ function renderProductTab(container) {
             html += '<div class="photo-item" data-photo-index="' + idx + '">';
             html += '<img src="' + photo + '" alt="Photo ' + (idx + 1) + '" loading="lazy">';
             html += '<button class="remove-btn" data-action="remove-photo" data-index="' + idx + '" title="' + escapeHtml(lang.removePhoto) + '">✕</button>';
+            html += '<button class="photo-export-btn" data-action="export-photo" data-index="' + idx + '" title="' + escapeHtml(lang.exportPhoto) + '">⬇️</button>';
             if (idx > 0) {
                 html += '<button class="photo-move-left" data-action="move-photo" data-index="' + idx + '" data-direction="-1" title="' + escapeHtml(lang.movePhotoLeft) + '">◀</button>';
             }
@@ -749,6 +781,27 @@ function wireProductTab(container) {
         });
     });
 
+    // Export photo buttons
+    container.querySelectorAll('[data-action="export-photo"]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            var idx = parseInt(btn.dataset.index);
+            try {
+                var result = await api.exportPhoto(state.filepath, idx);
+                if (result && result.data) {
+                    var a = document.createElement('a');
+                    a.href = 'data:' + result.mime + ';base64,' + result.data;
+                    a.download = result.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setState({ success: '✅ Exported ' + result.filename });
+                }
+            } catch (err) {
+                setState({ error: 'Export failed: ' + err.message });
+            }
+        });
+    });
+
     // Upload photo
     var uploadBtn = document.getElementById('photo-upload-btn');
     if (uploadBtn) {
@@ -818,6 +871,13 @@ function wireProductTab(container) {
             }).catch(function(err) {
                 setState({ error: 'Edit failed: ' + err.message });
             });
+        });
+    });
+
+    // Full image view on click
+    container.querySelectorAll('.photo-item img').forEach(function(img) {
+        img.addEventListener('click', function() {
+            showFullImageView(this.src);
         });
     });
 
@@ -1136,6 +1196,121 @@ function renderMarkdown(text, lang) {
     html = html.replace(/<p><\/p>/g, '');
 
     return html;
+}
+
+// ========================================================================
+// FULL IMAGE VIEWER
+// ========================================================================
+
+function showFullImageView(src) {
+    // Remove any existing full-image overlay
+    var existing = document.getElementById('full-image-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'full-image-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:999;cursor:zoom-out';
+
+    var img = document.createElement('img');
+    img.src = src;
+    img.style.cssText = 'max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);transition:transform 0.2s';
+    img.style.cursor = 'zoom-in';
+
+    var zoomLevel = 1;
+    overlay.appendChild(img);
+
+    // Click overlay to close
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.remove();
+        }
+    });
+
+    // Click image to toggle zoom
+    img.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (zoomLevel === 1) {
+            zoomLevel = 2;
+            img.style.transform = 'scale(2)';
+            img.style.cursor = 'zoom-out';
+        } else {
+            zoomLevel = 1;
+            img.style.transform = 'scale(1)';
+            img.style.cursor = 'zoom-in';
+        }
+    });
+
+    // Scroll to zoom
+    overlay.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        zoomLevel += e.deltaY > 0 ? -0.2 : 0.2;
+        zoomLevel = Math.max(0.5, Math.min(5, zoomLevel));
+        img.style.transform = 'scale(' + zoomLevel + ')';
+        if (zoomLevel <= 1) {
+            img.style.cursor = 'zoom-in';
+        } else {
+            img.style.cursor = 'zoom-out';
+        }
+    });
+
+    // Close with Escape
+    var keyHandler = function(e) {
+        if (e.key === 'Escape') {
+            overlay.remove();
+            document.removeEventListener('keydown', keyHandler);
+        }
+    };
+    document.addEventListener('keydown', keyHandler);
+
+    document.body.appendChild(overlay);
+}
+
+// ========================================================================
+// HANDLE SEND (Share)
+// ========================================================================
+
+async function handleSend() {
+    // Show share modal
+    var lang = state.lang || l10n.en;
+
+    // Build product summary for sharing
+    var p = state.product;
+    var subject = 'Product: ' + (p.title || p.code || 'Untitled');
+    var body = 'Product: ' + (p.title || '') + '\nCode: ' + (p.code || '') + '\nDescription:\n' + (p.description || '') + '\n\nOpen the attached .prod file to view full details.';
+
+    var shareModal = document.createElement('div');
+    shareModal.className = 'modal-overlay';
+    shareModal.style.display = 'flex';
+    shareModal.id = 'share-modal';
+    shareModal.addEventListener('click', function(e) {
+        if (e.target === shareModal) shareModal.remove();
+    });
+
+    shareModal.innerHTML = '<div class="modal" onclick="event.stopPropagation()">' +
+        '<h3>' + escapeHtml('📤 Share') + '</h3>' +
+        '<p style="margin-bottom:16px;color:var(--text-secondary);font-size:13px">' + escapeHtml(state.filepath || '') + '</p>' +
+        '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<a href="mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '" class="btn" style="text-decoration:none;justify-content:center">📧 ' + escapeHtml('Email') + '</a>' +
+        '<button class="btn" id="share-copy-btn" style="justify-content:center">📋 ' + escapeHtml('Copy info to clipboard') + '</button>' +
+        '</div>' +
+        '<div class="modal-actions"><button class="btn" onclick="document.getElementById(\'share-modal\').remove()">' + escapeHtml(lang.close) + '</button></div>' +
+        '</div>';
+
+    document.body.appendChild(shareModal);
+
+    // Wire copy button
+    setTimeout(function() {
+        var copyBtn = document.getElementById('share-copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                var info = 'Product: ' + (p.title || '') + '\nCode: ' + (p.code || '') + '\nFile: ' + (state.filepath || '');
+                navigator.clipboard.writeText(info).then(function() {
+                    copyBtn.textContent = '✅ Copied!';
+                    setTimeout(function() { copyBtn.textContent = '📋 Copy info to clipboard'; }, 2000);
+                });
+            });
+        }
+    }, 100);
 }
 
 // ========================================================================

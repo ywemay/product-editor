@@ -265,6 +265,20 @@ def delete_price(path: str, index: int) -> None:
     p.save(path)
 
 
+def export_photo(path: str, index: int) -> dict:
+    """Return photo as base64 data for browser download."""
+    p = Product.open(path)
+    if index < 0 or index >= len(p.photos):
+        raise IndexError(f"photo index {index} out of range")
+    import base64
+    return {
+        "index": index,
+        "mime": "image/jpeg",
+        "data": base64.b64encode(p.photos[index]).decode("ascii"),
+        "filename": f"photo_{index + 1}.jpg",
+    }
+
+
 def move_photo(path: str, index: int, direction: int) -> None:
     p = Product.open(path)
     if index < 0 or index >= len(p.photos):

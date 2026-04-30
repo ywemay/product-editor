@@ -375,6 +375,29 @@ select option { background: #2a2a3e; color: #cdd6f4; }
     vertical-align: middle;
 }
 
+/* Photo export button */
+.photo-export-btn {
+    position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+    width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.6); color: var(--accent);
+    cursor: pointer; font-size: 10px; display: none;
+    align-items: center; justify-content: center; z-index: 2;
+}
+.photo-item:hover .photo-export-btn { display: flex; }
+.photo-export-btn:hover { background: rgba(0,0,0,0.85); }
+
+/* ========== FULL IMAGE VIEWER ========== */
+#full-image-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85); display: flex; align-items: center;
+    justify-content: center; z-index: 999; cursor: zoom-out;
+}
+#full-image-overlay img {
+    max-width: 90vw; max-height: 90vh; object-fit: contain;
+    border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transition: transform 0.2s; user-select: none;
+}
+
 /* ========== LIGHT THEME ========== */
 @media (prefers-color-scheme: light) {
     :root {

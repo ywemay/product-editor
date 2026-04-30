@@ -234,6 +234,20 @@ if bottle is not None:
             return json_err(str(e))
 
 
+    @bottle_app.post("/api/photo/export")
+    def api_photo_export():
+        body = request.json or {}
+        path = body.get("path", "")
+        index = body.get("index", -1)
+        if not path or index < 0:
+            return json_err("path and index are required")
+        try:
+            result = store.export_photo(path, index)
+            return json_ok(result)
+        except Exception as e:
+            return json_err(str(e))
+
+
     @bottle_app.post("/api/photo/move")
     def api_photo_move():
         body = request.json or {}
