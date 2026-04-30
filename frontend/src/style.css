@@ -265,6 +265,16 @@ select option { background: #2a2a3e; color: #cdd6f4; }
 .combinations-table tbody tr:last-child td {
     border-bottom: none;
 }
+/* Disabled combination row */
+.combinations-table tr.combo-disabled {
+    opacity: 0.45;
+}
+.combinations-table tr.combo-disabled td {
+    background: var(--bg-primary);
+}
+.combinations-table tr.combo-disabled:hover td {
+    background: var(--bg-primary);
+}
 
 /* ========== ADD PRICE FORM ========== */
 .add-price-form {
@@ -293,4 +303,58 @@ select option { background: #2a2a3e; color: #cdd6f4; }
 .description-content blockquote {
     border-left: 3px solid var(--accent); padding-left: 12px;
     color: var(--text-secondary); margin: 8px 0;
+}
+
+/* ========== TOP BAR DIVIDER ========== */
+.topbar-divider {
+    display: inline-block;
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 2px;
+}
+
+/* ========== TOP BAR PRICE FORM ========== */
+.topbar-price-form input,
+.topbar-price-form select {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+.topbar-price-form input:focus,
+.topbar-price-form select:focus {
+    border-color: var(--accent);
+    background: var(--bg-input-focus);
+}
+
+/* ========== EMPTY STATE (main editor) ========== */
+.editor-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--text-muted);
+}
+.editor-empty-state div:first-child {
+    font-size: 48px;
+    opacity: 0.3;
+}
+.editor-empty-state p {
+    font-size: 14px;
+}
+.editor-empty-state .small {
+    font-size: 12px;
+}
+
+/* ========== ENABLE TOGGLE IN COMBOS TABLE ========== */
+.combo-enabled-toggle {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    vertical-align: middle;
 }

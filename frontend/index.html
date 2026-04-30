@@ -9,37 +9,32 @@
 </head>
 <body>
 <div id="app">
-    <!-- Start page -- file picker -->
-    <div id="start-page" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:20px">
-        <div style="font-size:64px;opacity:0.4">📦</div>
-        <h2 style="color:var(--text-secondary);font-weight:400">Open a .prod file to edit</h2>
-        <div style="display:flex;gap:12px">
-            <button class="btn btn-primary" id="btn-open-file" style="font-size:16px;padding:12px 28px">📂 Open File</button>
-            <button class="btn" id="btn-open-file-dialog" style="font-size:16px;padding:12px 28px">🔍 Browse...</button>
-        </div>
-        <p style="margin-top:24px;font-size:12px;color:var(--text-muted)">
-            Products Editor v1.0.0 — Drag & drop .prod files onto this window
-        </p>
-    </div>
-
-    <!-- Editor view (hidden initially) -->
-    <div id="editor-view" style="display:none;flex-direction:column;height:100vh">
+    <!-- Editor view (always shown) -->
+    <div id="editor-view" style="display:flex;flex-direction:column;height:100vh">
         <!-- Top bar -->
         <div id="editor-topbar" style="display:flex;align-items:center;padding:8px 16px;background:var(--bg-secondary);border-bottom:1px solid var(--border);gap:10px">
             <span id="editor-icon" style="font-size:20px">📦</span>
             <span id="editor-filename" style="font-weight:600;flex:1;font-size:14px"></span>
             <span id="editor-modified" style="font-size:11px;color:var(--accent-yellow);display:none">✏️ Modified</span>
-            <button class="btn btn-sm" id="btn-close-file" title="Close file">✕ Close</button>
-            <button class="btn btn-sm btn-primary" id="btn-save">💾 Save</button>
-            <button class="btn btn-sm" id="btn-save-as">Save As...</button>
+            <button class="btn btn-sm" id="btn-open-file" title="Open file" style="display:none">📂 Open</button>
+            <button class="btn btn-sm" id="btn-close-file" title="Close file" style="display:none">✕ Close</button>
+            <button class="btn btn-sm btn-primary" id="btn-save" style="display:none">💾 Save</button>
+            <button class="btn btn-sm" id="btn-save-as" style="display:none">Save As...</button>
+            <span class="topbar-divider" id="tb-divider" style="display:none"></span>
+            <div class="topbar-price-form" id="topbar-price-form" style="display:none;align-items:center;gap:6px">
+                <input type="number" id="tb-price-input" step="0.01" placeholder="Price" style="width:80px;font-size:12px;padding:3px 6px" />
+                <input type="text" id="tb-currency-input" value="USD" maxlength="3" style="width:45px;font-size:12px;padding:3px 6px" />
+                <select id="tb-variation-select" style="font-size:12px;padding:3px 6px;max-width:120px">
+                    <option value="">All</option>
+                </select>
+                <button class="btn btn-xs btn-primary" id="tb-add-price-btn">➕ Add Price</button>
+            </div>
         </div>
 
         <!-- Tab bar -->
         <div id="tabs" style="display:flex;gap:2px;padding:0 12px;background:var(--bg-secondary);border-bottom:1px solid var(--border)">
-            <button class="tab-btn active" data-tab="photos">🖼️ Photos</button>
+            <button class="tab-btn active" data-tab="product">🖼️ Product</button>
             <button class="tab-btn" data-tab="variations">🏷️ Variations</button>
-            <button class="tab-btn" data-tab="prices">💲 Prices</button>
-            <button class="tab-btn" data-tab="description">📝 Description</button>
         </div>
 
         <!-- Tab content -->
