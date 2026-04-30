@@ -1286,11 +1286,13 @@ async function handleSend() {
         if (e.target === shareModal) shareModal.remove();
     });
 
+    var mailtoUrl = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+
     shareModal.innerHTML = '<div class="modal" onclick="event.stopPropagation()">' +
         '<h3>' + escapeHtml('📤 Share') + '</h3>' +
         '<p style="margin-bottom:16px;color:var(--text-secondary);font-size:13px">' + escapeHtml(state.filepath || '') + '</p>' +
         '<div style="display:flex;flex-direction:column;gap:10px">' +
-        '<a href="mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '" class="btn" style="text-decoration:none;justify-content:center">📧 ' + escapeHtml('Email') + '</a>' +
+        '<button class="btn" id="share-email-btn" style="justify-content:center">📧 ' + escapeHtml('Email') + '</button>' +
         '<button class="btn" id="share-copy-btn" style="justify-content:center">📋 ' + escapeHtml('Copy info to clipboard') + '</button>' +
         '</div>' +
         '<div class="modal-actions"><button class="btn" onclick="document.getElementById(\'share-modal\').remove()">' + escapeHtml(lang.close) + '</button></div>' +
@@ -1298,8 +1300,15 @@ async function handleSend() {
 
     document.body.appendChild(shareModal);
 
-    // Wire copy button
+    // Wire email button — opens via OS through Python backend
     setTimeout(function() {
+        var emailBtn = document.getElementById('share-email-btn');
+        if (emailBtn) {
+            emailBtn.addEventListener('click', function() {
+                var mailtoUrl = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+                api.openUrl(mailtoUrl);
+            });
+        }
         var copyBtn = document.getElementById('share-copy-btn');
         if (copyBtn) {
             copyBtn.addEventListener('click', function() {

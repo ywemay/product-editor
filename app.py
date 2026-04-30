@@ -248,6 +248,20 @@ if bottle is not None:
             return json_err(str(e))
 
 
+    @bottle_app.get("/api/open-url")
+    def api_open_url():
+        """Open a URL in the default OS browser/mail client."""
+        url = request.query.get("url", "")
+        if not url:
+            return json_err("url is required")
+        try:
+            import webbrowser
+            webbrowser.open(url)
+            return json_ok({"opened": True})
+        except Exception as e:
+            return json_err(str(e))
+
+
     @bottle_app.post("/api/photo/move")
     def api_photo_move():
         body = request.json or {}

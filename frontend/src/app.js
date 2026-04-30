@@ -26,4 +26,5 @@ const api = {
     deletePrice:        (p, index) => apiCall('POST', '/api/price/delete', { path: p, index }),
     movePhoto:          (p, index, direction) => apiCall('POST', '/api/photo/move', { path: p, index, direction }),
     exportPhoto:        (p, index) => apiCall('POST', '/api/photo/export', { path: p, index }),
+    openUrl:            (url) => fetch('/api/open-url?url=' + encodeURIComponent(url)),
 };
