@@ -59,22 +59,15 @@ if bottle is not None:
 
     @bottle_app.post("/api/save")
     def api_save():
-        """Save product fields (title, code, description)."""
+        """Save product fields (title, code, description, variation_groups)."""
         body = request.json or {}
         path = body.get("path", "")
         if not path:
             return json_err("path is required")
         try:
-            from prodlib.core import Product
-            p = Product.open(path)
-            if "title" in body.get("product", {}):
-                p.header.title = body["product"]["title"]
-            if "code" in body.get("product", {}):
-                p.header.code = body["product"]["code"]
-            if "description" in body.get("product", {}):
-                p.header.description = body["product"]["description"]
-            p.save(path)
-            return json_ok(store.open_product(path))
+            result = store.save_product(path, body.get("product", {}))
+            result["filepath"] = path
+            return json_ok(result)
         except Exception as e:
             return json_err(str(e))
 

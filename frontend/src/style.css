@@ -132,11 +132,73 @@ select option { background: #2a2a3e; color: #cdd6f4; }
     border-color: var(--accent); background: var(--bg-hover); color: var(--accent);
 }
 
-/* ========== VARIATIONS ========== */
-.variation-row {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+/* ========== VARIATION GROUPS ========== */
+.variation-groups-container {
+    display: flex; flex-direction: column; gap: 10px;
 }
-.variation-row input { flex: 1; }
+.variation-group-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+}
+.variation-group-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.variation-group-name {
+    flex: 1; max-width: 300px;
+}
+.variation-group-values {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.variation-chip {
+    display: flex; align-items: center; gap: 2px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 2px 4px 2px 8px;
+}
+.variation-chip-input {
+    border: none; background: transparent;
+    padding: 4px 4px; font-size: 13px; min-width: 40px;
+    color: var(--text-primary);
+    outline: none;
+}
+.variation-chip-input:focus {
+    border: none; background: transparent;
+}
+.variation-chip-remove {
+    border: none; background: transparent;
+    color: var(--accent-red); cursor: pointer;
+    font-size: 12px; padding: 0 2px; line-height: 1;
+}
+.variation-chip-remove:hover {
+    color: #ff6b8a;
+}
+.variation-add-value-btn {
+    margin-left: 4px;
+}
+
+/* ========== VARIATION GROUP TOGGLE ========== */
+.variation-group-toggle {
+    margin-top: 6px;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.variation-group-toggle label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.variation-group-toggle input[type="checkbox"] {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
 
 /* ========== PRICE HISTORY ========== */
 .price-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -183,6 +245,25 @@ select option { background: #2a2a3e; color: #cdd6f4; }
 .empty-tab {
     display: flex; align-items: center; justify-content: center;
     height: 200px; color: var(--text-muted); font-size: 14px;
+}
+
+/* ========== COMBINATIONS TABLE ========== */
+.combinations-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.combinations-table th {
+    text-align: left; padding: 8px 10px;
+    background: var(--bg-hover); border-bottom: 1px solid var(--border);
+    font-weight: 500; color: var(--text-secondary);
+}
+.combinations-table td {
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+}
+.combinations-table tr:hover td {
+    background: var(--bg-hover);
+}
+.combinations-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 /* ========== ADD PRICE FORM ========== */

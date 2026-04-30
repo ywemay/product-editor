@@ -109,6 +109,10 @@ async function openProductFile(filepath) {
     try {
         var product = await api.openProduct(filepath);
         var history = await api.getPriceHistory(filepath);
+        // Ensure variation_groups exists
+        if (!product.variation_groups) {
+            product.variation_groups = [];
+        }
         setState({
             filepath: filepath,
             product: product,
@@ -137,6 +141,7 @@ async function handleSave() {
             title: product.title,
             code: product.code,
             description: product.description,
+            variation_groups: product.variation_groups,
         });
         setState({ product: result, modified: false, success: '✅ Saved' });
     } catch (err) {
@@ -216,7 +221,6 @@ function renderTopBar() {
 
 function renderTabs() {
     var tabsEl = document.getElementById('tabs');
-    var tabNames = ['photos', 'variations', 'prices', 'description'];
     tabsEl.querySelectorAll('.tab-btn').forEach(function(btn) {
         btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
     });
@@ -289,80 +293,235 @@ function renderPhotosTab(container) {
 }
 
 // ========================================================================
-// VARIATIONS TAB
+// VARIATIONS TAB — Group Editor
 // ========================================================================
+
+function buildCombinations(groups) {
+    if (!groups || groups.length === 0) return [];
+    // Check for empty group
+    for (var i = 0; i < groups.length; i++) {
+        if (!groups[i].values || groups[i].values.length === 0) return [];
+    }
+    var total = 1;
+    for (var i = 0; i < groups.length; i++) {
+        total *= groups[i].values.length;
+    }
+    var result = [];
+    for (var idx = 0; idx < total; idx++) {
+        var values = [];
+        var remain = idx;
+        // Last group cycles fastest
+        for (var gi = groups.length - 1; gi >= 0; gi--) {
+            var vals = groups[gi].values;
+            var vIdx = remain % vals.length;
+            values.unshift(vals[vIdx]);
+            remain = Math.floor(remain / vals.length);
+        }
+        // Build label
+        var parts = values.filter(function(v) { return v !== ''; });
+        var label = parts.join(' / ');
+        result.push({ values: values, label: label });
+    }
+    return result;
+}
 
 function renderVariationsTab(container) {
     var p = state.product;
     if (!p) return;
 
-    var vars = p.variations || [];
+    var groups = p.variation_groups || [];
+    var combinations = buildCombinations(groups);
+
     var html = '';
-    html += '<div class="section-header">Product Variations</div>';
-    html += '<div id="variations-list">';
-    if (vars.length === 0) {
-        html += '<div class="empty-tab">No variations yet.</div>';
+
+    // ── Section: Group Editor ──
+    html += '<div class="section-header">Variation Groups</div>';
+    html += '<div class="variation-groups-container">';
+
+    if (groups.length === 0) {
+        html += '<div class="empty-tab">No variation groups defined. Add groups like Color, Size, or Material.</div>';
     } else {
-        vars.forEach(function(v, idx) {
-            html += '<div class="variation-row">';
-            html += '<input type="text" class="variation-input" value="' + escapeHtml(v) + '" data-idx="' + idx + '" placeholder="Variation name" />';
-            html += '<button class="btn btn-xs btn-danger" data-action="remove-variation" data-idx="' + idx + '">✕</button>';
+        groups.forEach(function(group, gi) {
+            html += '<div class="variation-group-card" data-group-index="' + gi + '">';
+            html += '<div class="variation-group-header">';
+            html += '<input type="text" class="variation-group-name" value="' + escapeHtml(group.name) + '" placeholder="Group name (e.g. Color)" data-gi="' + gi + '" />';
+            html += '<button class="btn btn-xs btn-danger" data-action="delete-group" data-gi="' + gi + '" title="Delete group">✕</button>';
             html += '</div>';
+            html += '<div class="variation-group-toggle">';
+            html += '<label>';
+            html += '<input type="checkbox" class="variation-affects-price" data-gi="' + gi + '" ' + (group.affects_price !== false ? 'checked' : '') + ' />';
+            html += ' Affects price';
+            html += '</label>';
+            html += '</div>';
+            html += '<div class="variation-group-values">';
+            // Values as chips
+            if (group.values && group.values.length > 0) {
+                group.values.forEach(function(val, vi) {
+                    html += '<div class="variation-chip" data-gi="' + gi + '" data-vi="' + vi + '">';
+                    html += '<input type="text" class="variation-chip-input" value="' + escapeHtml(val) + '" placeholder="Value" data-gi="' + gi + '" data-vi="' + vi + '" />';
+                    html += '<button class="variation-chip-remove" data-action="remove-value" data-gi="' + gi + '" data-vi="' + vi + '">✕</button>';
+                    html += '</div>';
+                });
+            }
+            // Add value button
+            html += '<button class="btn btn-xs btn-primary variation-add-value-btn" data-gi="' + gi + '">+ Value</button>';
+            html += '</div>'; // .variation-group-values
+            html += '</div>'; // .variation-group-card
         });
     }
+
+    html += '<button class="btn btn-sm btn-primary" id="add-group-btn">➕ Add Group</button>';
+    html += '</div>'; // .variation-groups-container
+
+    // ── Section: Combinations Preview ──
+    html += '<div id="combinations-section">';
+    html += '<div class="section-header" style="margin-top:20px">Generated SKUs</div>';
+
+    if (combinations.length === 0) {
+        html += '<div class="empty-tab">No SKU combinations to display. Add values to variation groups above.</div>';
+    } else {
+        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">' + combinations.length + ' SKU combination(s)</p>';
+        html += '<table class="combinations-table">';
+        html += '<thead><tr>';
+        // Group name headers
+        groups.forEach(function(g) {
+            var hdr = g.name || '(unnamed)';
+            html += '<th>' + escapeHtml(hdr) + '</th>';
+        });
+        html += '<th>Combination</th>';
+        html += '</tr></thead><tbody>';
+
+        combinations.forEach(function(comb) {
+            html += '<tr>';
+            comb.values.forEach(function(v) {
+                html += '<td>' + escapeHtml(v) + '</td>';
+            });
+            html += '<td>' + escapeHtml(comb.label) + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+    }
     html += '</div>';
-    html += '<button class="btn btn-sm btn-primary" id="add-variation-btn" style="margin-top:8px">➕ Add Variation</button>';
-    html += '<p style="font-size:11px;color:var(--text-muted);margin-top:6px">⚠️ Variations are stored in localStorage for now.</p>';
 
     container.innerHTML = html;
+    wireVariationsTab(container);
+}
 
-    // Wire up remove
-    container.querySelectorAll('[data-action="remove-variation"]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var idx = parseInt(btn.dataset.idx);
-            var vars = state.product.variations || [];
-            vars.splice(idx, 1);
-            state.product.variations = vars;
-            saveVariationsToLocal();
-            setState({ modified: true });
+function renderCombinationsTable() {
+    var container = document.getElementById('tab-content');
+    var combosSection = container && container.querySelector('#combinations-section');
+    if (!combosSection) return;
+
+    var groups = state.product.variation_groups || [];
+    var combinations = buildCombinations(groups);
+
+    var html = '';
+    html += '<div class="section-header" style="margin-top:20px">Generated SKUs</div>';
+
+    if (combinations.length === 0) {
+        html += '<div class="empty-tab">No SKU combinations to display. Add values to variation groups above.</div>';
+    } else {
+        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">' + combinations.length + ' SKU combination(s)</p>';
+        html += '<table class="combinations-table">';
+        html += '<thead><tr>';
+        groups.forEach(function(g) {
+            var hdr = g.name || '(unnamed)';
+            html += '<th>' + escapeHtml(hdr) + '</th>';
         });
-    });
+        html += '<th>Combination</th>';
+        html += '</tr></thead><tbody>';
 
-    document.getElementById('add-variation-btn').addEventListener('click', function() {
-        var vars = state.product.variations || [];
-        vars.push('');
-        state.product.variations = vars;
-        saveVariationsToLocal();
-        setState({ modified: true });
-    });
+        combinations.forEach(function(comb) {
+            html += '<tr>';
+            comb.values.forEach(function(v) {
+                html += '<td>' + escapeHtml(v) + '</td>';
+            });
+            html += '<td>' + escapeHtml(comb.label) + '</td>';
+            html += '</tr>';
+        });
 
-    container.querySelectorAll('.variation-input').forEach(function(input) {
+        html += '</tbody></table>';
+    }
+
+    combosSection.innerHTML = html;
+}
+
+function wireVariationsTab(container) {
+    // Group name change — update model only, no re-render
+    container.querySelectorAll('.variation-group-name').forEach(function(input) {
         input.addEventListener('input', function() {
-            var idx = parseInt(input.dataset.idx);
-            var vars = state.product.variations || [];
-            vars[idx] = input.value;
-            state.product.variations = vars;
-            saveVariationsToLocal();
+            var gi = parseInt(input.dataset.gi);
+            var groups = state.product.variation_groups;
+            groups[gi].name = input.value;
+            state.modified = true;
+            renderCombinationsTable();
+        });
+    });
+
+    // Affects-price toggle
+    container.querySelectorAll('.variation-affects-price').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var gi = parseInt(cb.dataset.gi);
+            var groups = state.product.variation_groups;
+            groups[gi].affects_price = cb.checked;
+            state.modified = true;
+            renderCombinationsTable();
+        });
+    });
+
+    // Value chip input change — update model only, no full re-render
+    container.querySelectorAll('.variation-chip-input').forEach(function(input) {
+        input.addEventListener('input', function() {
+            var gi = parseInt(input.dataset.gi);
+            var vi = parseInt(input.dataset.vi);
+            var groups = state.product.variation_groups;
+            groups[gi].values[vi] = input.value;
+            state.modified = true;
+            renderCombinationsTable();
+        });
+    });
+
+    // Remove value from group
+    container.querySelectorAll('[data-action="remove-value"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var gi = parseInt(btn.dataset.gi);
+            var vi = parseInt(btn.dataset.vi);
+            var groups = state.product.variation_groups;
+            groups[gi].values.splice(vi, 1);
             setState({ modified: true });
         });
     });
-}
 
-function saveVariationsToLocal() {
-    try {
-        var key = 'variations-' + (state.filepath || '');
-        localStorage.setItem(key, JSON.stringify(state.product.variations || []));
-    } catch (e) { /* ignore */ }
-}
+    // Add value to group
+    container.querySelectorAll('.variation-add-value-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var gi = parseInt(btn.dataset.gi);
+            var groups = state.product.variation_groups;
+            groups[gi].values.push('');
+            setState({ modified: true });
+        });
+    });
 
-function loadVariationsFromLocal() {
-    try {
-        var key = 'variations-' + (state.filepath || '');
-        var stored = localStorage.getItem(key);
-        if (stored && state.product) {
-            state.product.variations = JSON.parse(stored);
-        }
-    } catch (e) { /* ignore */ }
+    // Delete group
+    container.querySelectorAll('[data-action="delete-group"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var gi = parseInt(btn.dataset.gi);
+            var groups = state.product.variation_groups;
+            groups.splice(gi, 1);
+            setState({ modified: true });
+        });
+    });
+
+    // Add new group
+    var addBtn = document.getElementById('add-group-btn');
+    if (addBtn) {
+        addBtn.addEventListener('click', function() {
+            var groups = state.product.variation_groups;
+            groups.push({ name: '', values: [''] });
+            setState({ modified: true });
+        });
+    }
 }
 
 // ========================================================================
@@ -373,7 +532,14 @@ function renderPricesTab(container) {
     var p = state.product;
     if (!p) return;
 
-    var vars = p.variations || [];
+    // Build combinations from price-affecting groups only
+    var groups = p.variation_groups || [];
+    var affectedGroups = groups.filter(function(g) { return g.affects_price !== false; });
+    var priceCombos = buildCombinations(affectedGroups);
+    if (priceCombos.length === 0) {
+        priceCombos = [{ values: [], label: 'Base' }];
+    }
+
     var history = state.priceHistory || [];
 
     var html = '';
@@ -383,8 +549,8 @@ function renderPricesTab(container) {
     html += '<div class="form-group"><label>Currency</label><input type="text" id="new-currency-input" value="USD" maxlength="3" style="width:60px" /></div>';
     html += '<div class="form-group"><label>Variation</label><select id="new-variation-select">';
     html += '<option value="">— All —</option>';
-    vars.forEach(function(v) {
-        html += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>';
+    priceCombos.forEach(function(c) {
+        html += '<option value="' + escapeHtml(c.label) + '">' + escapeHtml(c.label) + '</option>';
     });
     html += '</select></div>';
     html += '<button class="btn btn-primary" id="add-price-btn" style="margin-bottom:2px">➕ Add</button>';

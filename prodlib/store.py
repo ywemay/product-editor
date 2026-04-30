@@ -3,7 +3,7 @@
 import os
 import base64
 
-from .core import Product, PriceRecord
+from .core import Product, PriceRecord, generate_combinations
 
 
 def _make_thumbnail(data: bytes, max_size: int = 120) -> str:
@@ -123,6 +123,11 @@ def create_subdir(parent_dir: str, name: str) -> str:
     return full
 
 
+def _groups_to_dicts(groups):
+    """Convert VariationGroup dataclass list to plain dicts for JSON serialization."""
+    return [{"name": g.name, "values": list(g.values), "affects_price": g.affects_price} for g in groups]
+
+
 def open_product(path: str) -> dict:
     """Open a .prod file and return a JSON-serialisable info dict."""
     p = Product.open(path)
@@ -131,7 +136,7 @@ def open_product(path: str) -> dict:
         "uuid": p.header.uuid,
         "code": p.header.code,
         "description": p.header.description,
-        "variations": p.header.variations,
+        "variation_groups": _groups_to_dicts(p.header.variation_groups),
         "photoCount": len(p.photos),
         "priceCount": len(p.price_history),
         "photos": [_make_thumbnail(d) for d in p.photos],
@@ -145,13 +150,42 @@ def create_product(path: str, title: str, code: str,
     return open_product(path)
 
 
+def save_product(path: str, data: dict) -> dict:
+    """Save product fields (title, code, description, variation_groups)."""
+    p = Product.open(path)
+    if "title" in data:
+        p.header.title = data["title"]
+    if "code" in data:
+        p.header.code = data["code"]
+    if "description" in data:
+        p.header.description = data["description"]
+    if "variation_groups" in data:
+        groups = []
+        for g in data["variation_groups"]:
+            from .core import VariationGroup
+            groups.append(VariationGroup(
+                name=g.get("name", ""),
+                values=list(g.get("values", [])),
+                affects_price=g.get("affects_price", True),
+            ))
+        p.header.variation_groups = groups
+    p.save(path)
+    return open_product(path)
+
+
 def add_price(path: str, currency: str, variation: str,
               price: float) -> None:
     p = Product.open(path)
     import time
+    
+    # Build flat variation index from all group values
+    flat_vars = []
+    for g in p.header.variation_groups:
+        flat_vars.extend(g.values)
+    
     var_idx = -1
     if variation:
-        for i, v in enumerate(p.header.variations):
+        for i, v in enumerate(flat_vars):
             if v == variation:
                 var_idx = i
                 break
@@ -182,6 +216,12 @@ def remove_photo(path: str, index: int) -> None:
 def get_price_history(path: str) -> list[dict]:
     p = Product.open(path)
     from datetime import datetime, timezone
+    
+    # Build flat variation lookup
+    flat_vars = []
+    for g in p.header.variation_groups:
+        flat_vars.extend(g.values)
+    
     result = []
     for rec in p.price_history:
         try:
@@ -191,8 +231,8 @@ def get_price_history(path: str) -> list[dict]:
         result.append({
             "timestamp": rec.timestamp,
             "date": dt.isoformat(),
-            "variation": (p.header.variations[rec.variation_index]
-                          if 0 <= rec.variation_index < len(p.header.variations)
+            "variation": (flat_vars[rec.variation_index]
+                          if 0 <= rec.variation_index < len(flat_vars)
                           else ""),
             "price": rec.price_hundredths / 100.0,
             "currency": rec.currency,
