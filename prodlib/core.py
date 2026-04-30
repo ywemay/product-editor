@@ -34,6 +34,7 @@ class VariationGroup:
     name: str = ""
     values: list = field(default_factory=list)
     affects_price: bool = True
+    affects_appearance: bool = True
 
 
 @dataclass
@@ -168,7 +169,7 @@ class Product:
                 code=raw.get("code", ""),
                 description=raw.get("description", ""),
                 variation_groups=[
-                    VariationGroup(name=g.get("name", ""), values=g.get("values", []), affects_price=g.get("affects_price", True))
+                    VariationGroup(name=g.get("name", ""), values=g.get("values", []), affects_price=g.get("affects_price", True), affects_appearance=g.get("affects_appearance", True))
                     for g in variation_groups
                 ],
             )

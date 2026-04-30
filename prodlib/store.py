@@ -125,7 +125,7 @@ def create_subdir(parent_dir: str, name: str) -> str:
 
 def _groups_to_dicts(groups):
     """Convert VariationGroup dataclass list to plain dicts for JSON serialization."""
-    return [{"name": g.name, "values": list(g.values), "affects_price": g.affects_price} for g in groups]
+    return [{"name": g.name, "values": list(g.values), "affects_price": g.affects_price, "affects_appearance": g.affects_appearance} for g in groups]
 
 
 def open_product(path: str) -> dict:
@@ -170,6 +170,7 @@ def save_product(path: str, data: dict) -> dict:
                 name=g.get("name", ""),
                 values=list(g.get("values", [])),
                 affects_price=g.get("affects_price", True),
+                affects_appearance=g.get("affects_appearance", True),
             ))
         p.header.variation_groups = groups
     p.save(path)

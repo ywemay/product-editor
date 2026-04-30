@@ -10,6 +10,7 @@ var state = {
     priceHistory: [],
     combinationEnabled: {},
     combinationPhotos: {}, // label -> base64 data URL
+    appearancePhotos: {}, // label -> base64 data URL (for appearance groups)
     loading: false,
     error: '',
     success: '',
@@ -430,6 +431,7 @@ async function openProductFile(filepath) {
             priceHistory: history || [],
             combinationEnabled: ce,
             combinationPhotos: {},
+            appearancePhotos: {},
             loading: false,
             modified: false,
             activeTab: 'product',
@@ -450,6 +452,7 @@ function handleCloseFile() {
         modified: false,
         combinationEnabled: {},
         combinationPhotos: {},
+        appearancePhotos: {},
     });
 }
 
@@ -960,6 +963,10 @@ function renderVariationsTab(container) {
             html += '<input type="checkbox" class="variation-affects-price" data-gi="' + gi + '" ' + (group.affects_price !== false ? 'checked' : '') + ' />';
             html += ' ' + escapeHtml(lang.affectsPrice);
             html += '</label>';
+            html += '<label style="margin-left:12px">';
+            html += '<input type="checkbox" class="variation-affects-appearance" data-gi="' + gi + '" ' + (group.affects_appearance !== false ? 'checked' : '') + ' />';
+            html += ' 🎨 ' + escapeHtml('Affects appearance');
+            html += '</label>';
             html += '</div>';
             html += '<div class="variation-group-values">';
             // Values as chips
@@ -1024,6 +1031,47 @@ function renderVariationsTab(container) {
     }
     html += '</div>';
 
+    // ── Section: Appearance Combinations ──
+    var appearanceGroups = groups.filter(function(g) { return g.affects_appearance !== false; });
+    var appearanceCombos = buildCombinations(appearanceGroups);
+    html += '<div id="appearance-combinations-section">';
+    html += '<div class="section-header" style="margin-top:20px">🎨 Appearance Combinations</div>';
+
+    if (appearanceCombos.length === 0) {
+        html += '<div class="empty-tab">No appearance combinations. Enable "Affects appearance" on groups above.</div>';
+    } else {
+        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">' + appearanceCombos.length + ' appearance combination(s) — assign photos per look</p>';
+        html += '<table class="combinations-table">';
+        html += '<thead><tr>';
+        html += '<th>Photo</th>';
+        appearanceGroups.forEach(function(g) {
+            var hdr = g.name || '(unnamed)';
+            html += '<th>' + escapeHtml(hdr) + '</th>';
+        });
+        html += '<th>Combination</th>';
+        html += '</tr></thead><tbody>';
+
+        appearanceCombos.forEach(function(comb) {
+            var photo = state.appearancePhotos[comb.label];
+            html += '<tr>';
+            html += '<td>';
+            if (photo) {
+                html += '<img src="' + photo + '" class="combo-photo-thumb app-photo-thumb" data-app-combo="' + escapeHtml(comb.label) + '" title="Click to change photo (right-click to clear)" />';
+            } else {
+                html += '<button class="btn btn-xs combo-set-photo-btn" data-app-combo="' + escapeHtml(comb.label) + '">📷</button>';
+            }
+            html += '</td>';
+            comb.values.forEach(function(v) {
+                html += '<td>' + escapeHtml(v) + '</td>';
+            });
+            html += '<td>' + escapeHtml(comb.label) + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+    }
+    html += '</div>';
+
     container.innerHTML = html;
     wireVariationsTab(container);
 }
@@ -1046,6 +1094,17 @@ function wireVariationsTab(container) {
             var gi = parseInt(cb.dataset.gi);
             var groups = state.product.variation_groups;
             groups[gi].affects_price = cb.checked;
+            state.modified = true;
+            renderCombinationsTable();
+        });
+    });
+
+    // Affects-appearance toggle
+    container.querySelectorAll('.variation-affects-appearance').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var gi = parseInt(cb.dataset.gi);
+            var groups = state.product.variation_groups;
+            groups[gi].affects_appearance = cb.checked;
             state.modified = true;
             renderCombinationsTable();
         });
@@ -1139,6 +1198,35 @@ function wireVariationsTab(container) {
             renderCombinationsTable();
         });
     });
+
+    // Set appearance photo (works for both button and img)
+    container.querySelectorAll('[data-app-combo]').forEach(function(el) {
+        el.addEventListener('click', function() {
+            pickAppearancePhoto(el.dataset.appCombo);
+        });
+        el.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            delete state.appearancePhotos[el.dataset.appCombo];
+            renderVariationsTab(document.getElementById('tab-content'));
+        });
+    });
+}
+
+function pickAppearancePhoto(comboLabel) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp';
+    input.onchange = function() {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                state.appearancePhotos[comboLabel] = e.target.result;
+                renderVariationsTab(document.getElementById('tab-content'));
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    };
+    input.click();
 }
 
 function pickComboPhoto(comboLabel) {
