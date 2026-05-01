@@ -3,9 +3,10 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.backends._legacy:_Backend"
 
 [project]
-name = "products-desktop-editor"
+name = "product-editor"
 version = "1.0.0"
 description = "Dedicated .prod file editor"
+
 requires-python = ">=3.10"
 dependencies = [
     "pywebview>=5.0",
